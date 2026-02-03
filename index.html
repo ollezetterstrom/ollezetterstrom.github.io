@@ -2,31 +2,73 @@
 <html>
 <head>
     <title>Lunch Ticket</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { background-color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        img { width: 90vw; height: 90vw; max-width: 300px; max-height: 300px; }
+        body { 
+            background-color: #000000; /* Black for AMOLED battery saving */
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; /* Prevents scrolling */
+        }
+        
+        #qr-container {
+            /* Creates the white 'Quiet Zone' border needed for scanning */
+            background-color: white;
+            padding: 10px;
+            border-radius: 10px; /* Slightly rounded corners look better on One UI */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        img { 
+            /* 70vw ensures the square fits inside the round screen without corners cutting off */
+            width: 70vw; 
+            height: 70vw; 
+            max-width: 280px; 
+            max-height: 280px; 
+            display: block;
+        }
+        
+        /* Optional: A tiny date display below (remove if you want just the code) */
+        #date-text {
+            position: absolute;
+            bottom: 10%;
+            color: #555;
+            font-family: sans-serif;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
-    <img id="qr" src="" alt="Lunch QR" />
+    <div id="qr-container">
+        <img id="qr" src="" alt="Loading..." />
+    </div>
+
+    <div id="date-text" id="date-display"></div>
 
     <script>
-        // YOUR STATIC ID (The one that never changes)
-        const myID = "111029311311249883543";
+        // --- CONFIGURATION ---
+        const myID = "111029311311249883543"; // Your ID
+        // ---------------------
 
-        // GET TODAY'S DATE (Format: :MMDD)
         const now = new Date();
-        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-11, so add 1
+        const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         
-        // COMBINE THEM (:MMDD;ID)
+        // Logic: :MMDD;ID
         const fullString = `:${month}${day};${myID}`;
 
-        // GENERATE QR IMAGE USING A PUBLIC API
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullString)}`;
+        // Using a reliable public API to generate the image
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
 
-        // DISPLAY IT
         document.getElementById('qr').src = qrUrl;
+        
+        // Updates the little text at the bottom
+        document.getElementById('date-display').innerText = `${month}/${day}`;
     </script>
 </body>
 </html>
