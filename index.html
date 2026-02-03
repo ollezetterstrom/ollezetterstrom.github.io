@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lunch Ticket</title>
+    <style>
+        body { background-color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        img { width: 90vw; height: 90vw; max-width: 300px; max-height: 300px; }
+    </style>
+</head>
+<body>
+    <img id="qr" src="" alt="Lunch QR" />
+
+    <script>
+        // YOUR STATIC ID (The one that never changes)
+        const myID = "111029311311249883543";
+
+        // GET TODAY'S DATE (Format: :MMDD)
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-11, so add 1
+        const day = String(now.getDate()).padStart(2, '0');
+        
+        // COMBINE THEM (:MMDD;ID)
+        const fullString = `:${month}${day};${myID}`;
+
+        // GENERATE QR IMAGE USING A PUBLIC API
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullString)}`;
+
+        // DISPLAY IT
+        document.getElementById('qr').src = qrUrl;
+    </script>
+</body>
+</html>
