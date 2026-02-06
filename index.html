@@ -141,8 +141,6 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
         console.log('✅ Firebase initialized');
-        console.log('📦 Auth container element:', authContainer);
-        console.log('📦 QR container element:', qrContainer);
 
         // UI Elements
         const authContainer = document.getElementById('auth-container');
@@ -151,6 +149,9 @@
         const userInfo = document.getElementById('user-info');
         const qrImg = document.getElementById('qr');
         const dateDisplay = document.getElementById('date-display');
+        
+        console.log('📦 Auth container element:', authContainer);
+        console.log('📦 QR container element:', qrContainer);
 
         // Generate QR code with user ID
         function generateQR(userId) {
