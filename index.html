@@ -114,6 +114,8 @@
 <body>
     <!-- Firebase SDK -->
     <script type="module">
+        console.log('🚀 Lunch Ticket v2.0 - Page loaded at:', new Date().toLocaleTimeString());
+        
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { 
             getAuth, 
@@ -134,9 +136,13 @@
         };
 
         // Initialize Firebase
+        console.log('🔧 Initializing Firebase...');
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
+        console.log('✅ Firebase initialized');
+        console.log('📦 Auth container element:', authContainer);
+        console.log('📦 QR container element:', qrContainer);
 
         // UI Elements
         const authContainer = document.getElementById('auth-container');
@@ -182,6 +188,7 @@
 
         // Show login view
         function showLogin() {
+            console.log('👤 Showing login view');
             authContainer.style.display = 'flex';
             loading.style.display = 'none';
             qrContainer.style.display = 'none';
@@ -218,7 +225,9 @@
         };
 
         // Listen for auth state changes
+        console.log('👂 Setting up auth state listener...');
         onAuthStateChanged(auth, (user) => {
+            console.log('🔄 Auth state changed:', user ? 'LOGGED IN' : 'NOT LOGGED IN');
             if (user) {
                 showQR(user);
             } else {
