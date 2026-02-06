@@ -5,27 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
-            background-color: #000000; /* Black for AMOLED battery saving */
+            background-color: #000000;
             display: flex; 
+            flex-direction: column;
             justify-content: center; 
             align-items: center; 
             height: 100vh; 
             margin: 0; 
-            overflow: hidden; /* Prevents scrolling */
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
+        #auth-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
         #qr-container {
-            /* Creates the white 'Quiet Zone' border needed for scanning */
             background-color: white;
             padding: 10px;
-            border-radius: 10px; /* Slightly rounded corners look better on One UI */
-            display: flex;
+            border-radius: 10px;
+            display: none;
             justify-content: center;
             align-items: center;
+            flex-direction: column;
+            gap: 10px;
         }
 
         img { 
-            /* 70vw ensures the square fits inside the round screen without corners cutting off */
             width: 70vw; 
             height: 70vw; 
             max-width: 280px; 
@@ -33,42 +42,208 @@
             display: block;
         }
         
-        /* Optional: A tiny date display below (remove if you want just the code) */
         #date-text {
-            position: absolute;
-            bottom: 10%;
-            color: #555;
-            font-family: sans-serif;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        #user-info {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #user-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+        }
+
+        #user-info p {
+            margin: 0;
             font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .google-btn {
+            background-color: white;
+            color: #444;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+            transition: box-shadow 0.2s;
+        }
+
+        .google-btn:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .google-btn img {
+            width: 18px;
+            height: 18px;
+        }
+
+        .logout-btn {
+            background-color: transparent;
+            color: #666;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .logout-btn:hover {
+            background-color: #f5f5f5;
+        }
+
+        #loading {
+            color: white;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div id="qr-container">
-        <img id="qr" src="" alt="Loading..." />
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut,
+            onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
+            authDomain: "lunchkod1239123.firebaseapp.com",
+            projectId: "lunchkod1239123",
+            storageBucket: "lunchkod1239123.firebasestorage.app",
+            messagingSenderId: "198521085351",
+            appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // UI Elements
+        const authContainer = document.getElementById('auth-container');
+        const qrContainer = document.getElementById('qr-container');
+        const loading = document.getElementById('loading');
+        const userInfo = document.getElementById('user-info');
+        const qrImg = document.getElementById('qr');
+        const dateDisplay = document.getElementById('date-display');
+
+        // Generate QR code with user ID
+        function generateQR(userId) {
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            
+            // Format: :MMDD;ID
+            const fullString = `:${month}${day};${userId}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
+            
+            qrImg.src = qrUrl;
+            dateDisplay.innerText = `${month}/${day}`;
+        }
+
+        // Show QR view
+        function showQR(user) {
+            authContainer.style.display = 'none';
+            loading.style.display = 'none';
+            qrContainer.style.display = 'flex';
+            
+            userInfo.innerHTML = `
+                <h3>${user.displayName || 'User'}</h3>
+                <p>${user.email}</p>
+            `;
+            
+            // Get the Google ID (sub) from provider data
+            // This is the same ID as your hardcoded "111029311311249883543"
+            const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
+            const googleId = googleProvider?.uid || user.uid;
+            
+            console.log('Using Google ID for QR:', googleId);
+            generateQR(googleId);
+        }
+
+        // Show login view
+        function showLogin() {
+            authContainer.style.display = 'flex';
+            loading.style.display = 'none';
+            qrContainer.style.display = 'none';
+        }
+
+        // Google Sign In
+        window.signInWithGoogle = async function() {
+            try {
+                loading.style.display = 'block';
+                authContainer.style.display = 'none';
+                
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                
+                console.log('Signed in:', user.email);
+                console.log('Firebase UID:', user.uid);
+                console.log('Google ID:', user.providerData[0]?.uid);
+                
+            } catch (error) {
+                console.error('Sign in error:', error);
+                showLogin();
+                alert('Sign in failed: ' + error.message);
+            }
+        };
+
+        // Sign Out
+        window.signOutUser = async function() {
+            try {
+                await signOut(auth);
+                showLogin();
+            } catch (error) {
+                console.error('Sign out error:', error);
+            }
+        };
+
+        // Listen for auth state changes
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                showQR(user);
+            } else {
+                showLogin();
+            }
+        });
+    </script>
+
+    <!-- Loading State -->
+    <div id="loading" style="display: none;">Loading...</div>
+
+    <!-- Auth View -->
+    <div id="auth-container">
+        <button class="google-btn" onclick="signInWithGoogle()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+            Sign in with Google
+        </button>
     </div>
 
-    <div id="date-text" id="date-display"></div>
-
-    <script>
-        // --- CONFIGURATION ---
-        const myID = "111029311311249883543"; // Your ID
-        // ---------------------
-
-        const now = new Date();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        
-        // Logic: :MMDD;ID
-        const fullString = `:${month}${day};${myID}`;
-
-        // Using a reliable public API to generate the image
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
-
-        document.getElementById('qr').src = qrUrl;
-        
-        // Updates the little text at the bottom
-        document.getElementById('date-display').innerText = `${month}/${day}`;
-    </script>
+    <!-- QR View -->
+    <div id="user-info"></div>
+    <div id="qr-container">
+        <img id="qr" src="" alt="QR Code" />
+        <div id="date-text" id="date-display"></div>
+        <button class="logout-btn" onclick="signOutUser()">Sign Out</button>
+    </div>
 </body>
 </html>
