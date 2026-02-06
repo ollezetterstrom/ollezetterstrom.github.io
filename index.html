@@ -25,6 +25,32 @@
             gap: 20px;
         }
 
+        #consent-container {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #consent-container h2 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        #consent-container p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
         #qr-container {
             background-color: white;
             padding: 10px;
@@ -92,6 +118,36 @@
             height: 18px;
         }
 
+        .consent-btn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .consent-btn:hover {
+            background-color: #3367d6;
+        }
+
+        .cancel-btn {
+            background-color: transparent;
+            color: #666;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .cancel-btn:hover {
+            background-color: #f5f5f5;
+        }
+
         .logout-btn {
             background-color: transparent;
             color: #666;
@@ -107,6 +163,21 @@
             background-color: #f5f5f5;
         }
 
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+
         #loading {
             color: white;
             font-size: 14px;
@@ -114,7 +185,7 @@
 
         /* Responsive design for small screens */
         @media (max-width: 300px) {
-            #qr-container { 
+            #qr-container, #consent-container { 
                 padding: 6px; 
                 border-radius: 8px;
             }
@@ -135,11 +206,21 @@
             #user-info p {
                 font-size: 10px;
             }
+            #consent-container h2 {
+                font-size: 16px;
+            }
+            #consent-container p {
+                font-size: 12px;
+            }
+            .consent-btn {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
         }
 
         /* Smart watch and very small screens */
         @media (max-width: 200px), (max-height: 200px) {
-            #qr-container { 
+            #qr-container, #consent-container { 
                 padding: 4px; 
                 border-radius: 6px;
                 gap: 6px;
@@ -161,6 +242,14 @@
                 font-size: 9px;
                 margin-top: 6px;
             }
+            .consent-btn {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+            .cancel-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
             #user-info {
                 margin-bottom: 6px;
             }
@@ -177,6 +266,12 @@
             #loading {
                 font-size: 11px;
             }
+            #consent-container h2 {
+                font-size: 13px;
+            }
+            #consent-container p {
+                font-size: 10px;
+            }
         }
 
         /* Landscape orientation on phones */
@@ -190,7 +285,7 @@
                 margin-right: 20px;
                 max-width: 200px;
             }
-            #qr-container {
+            #qr-container, #consent-container {
                 flex-shrink: 0;
             }
         }
@@ -209,6 +304,15 @@
             signOut,
             onAuthStateChanged 
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            deleteDoc,
+            updateDoc,
+            serverTimestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Your Firebase config
         const firebaseConfig = {
@@ -224,19 +328,21 @@
         console.log('🔧 Initializing Firebase...');
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
         console.log('✅ Firebase initialized');
 
         // UI Elements
         const authContainer = document.getElementById('auth-container');
+        const consentContainer = document.getElementById('consent-container');
         const qrContainer = document.getElementById('qr-container');
         const loading = document.getElementById('loading');
         const userInfo = document.getElementById('user-info');
         const qrImg = document.getElementById('qr');
         const dateDisplay = document.getElementById('date-display');
         
-        console.log('📦 Auth container element:', authContainer);
-        console.log('📦 QR container element:', qrContainer);
+        let currentUser = null;
+        let currentGoogleId = null;
 
         // Generate QR code with user ID
         function generateQR(userId) {
@@ -244,7 +350,6 @@
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
             
-            // Format: :MMDD;ID
             const fullString = `:${month}${day};${userId}`;
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
             
@@ -254,6 +359,7 @@
 
         // Show QR view
         function showQR(user) {
+            consentContainer.style.display = 'none';
             authContainer.style.display = 'none';
             loading.style.display = 'none';
             qrContainer.style.display = 'flex';
@@ -263,21 +369,59 @@
                 <p>${user.email}</p>
             `;
             
-            // Get the Google ID (sub) from provider data
-            // This is the same ID as your hardcoded "111029311311249883543"
-            const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
-            const googleId = googleProvider?.uid || user.uid;
-            
-            console.log('Using Google ID for QR:', googleId);
-            generateQR(googleId);
+            generateQR(currentGoogleId);
+        }
+
+        // Show consent view
+        function showConsent(user) {
+            authContainer.style.display = 'none';
+            qrContainer.style.display = 'none';
+            loading.style.display = 'none';
+            consentContainer.style.display = 'flex';
+            consentContainer.style.flexDirection = 'column';
         }
 
         // Show login view
         function showLogin() {
             console.log('👤 Showing login view');
+            consentContainer.style.display = 'none';
             authContainer.style.display = 'flex';
             loading.style.display = 'none';
             qrContainer.style.display = 'none';
+        }
+
+        // Check if user has already consented
+        async function checkConsent(user) {
+            try {
+                const consentDoc = await getDoc(doc(db, 'user_consents', user.uid));
+                return consentDoc.exists();
+            } catch (error) {
+                console.error('Error checking consent:', error);
+                return false;
+            }
+        }
+
+        // Save consent to Firestore
+        async function saveConsent(user) {
+            try {
+                const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
+                const googleId = googleProvider?.uid || user.uid;
+                currentGoogleId = googleId;
+                
+                await setDoc(doc(db, 'user_consents', user.uid), {
+                    googleId: googleId,
+                    email: user.email,
+                    displayName: user.displayName,
+                    consentedAt: serverTimestamp(),
+                    lastUsed: serverTimestamp()
+                });
+                
+                console.log('✅ Consent saved for:', user.email);
+                return true;
+            } catch (error) {
+                console.error('Error saving consent:', error);
+                return false;
+            }
         }
 
         // Google Sign In
@@ -287,11 +431,28 @@
                 authContainer.style.display = 'none';
                 
                 const result = await signInWithPopup(auth, provider);
-                const user = result.user;
+                currentUser = result.user;
                 
-                console.log('Signed in:', user.email);
-                console.log('Firebase UID:', user.uid);
-                console.log('Google ID:', user.providerData[0]?.uid);
+                console.log('Signed in:', currentUser.email);
+                
+                // Check if user has already consented
+                const hasConsented = await checkConsent(currentUser);
+                
+                if (hasConsented) {
+                    // Get their Google ID and show QR
+                    const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
+                    currentGoogleId = googleProvider?.uid || currentUser.uid;
+                    
+                    // Update last used timestamp
+                    await updateDoc(doc(db, 'user_consents', currentUser.uid), {
+                        lastUsed: serverTimestamp()
+                    });
+                    
+                    showQR(currentUser);
+                } else {
+                    // Show consent screen
+                    showConsent(currentUser);
+                }
                 
             } catch (error) {
                 console.error('Sign in error:', error);
@@ -300,10 +461,65 @@
             }
         };
 
+        // Handle consent agreement
+        window.agreeConsent = async function() {
+            if (!currentUser) return;
+            
+            loading.style.display = 'block';
+            consentContainer.style.display = 'none';
+            
+            const saved = await saveConsent(currentUser);
+            
+            if (saved) {
+                showQR(currentUser);
+            } else {
+                alert('Failed to save consent. Please try again.');
+                showConsent(currentUser);
+            }
+        };
+
+        // Handle consent decline
+        window.declineConsent = async function() {
+            if (!currentUser) return;
+            
+            // Sign them out
+            await signOut(auth);
+            currentUser = null;
+            currentGoogleId = null;
+            alert('Consent is required to access your lunch ticket. You have been signed out.');
+            showLogin();
+        };
+
+        // Delete user data
+        window.deleteMyData = async function() {
+            if (!currentUser) return;
+            
+            if (!confirm('Are you sure you want to delete your data? You will need to consent again to use the lunch ticket.')) {
+                return;
+            }
+            
+            try {
+                await deleteDoc(doc(db, 'user_consents', currentUser.uid));
+                console.log('User data deleted:', currentUser.email);
+                
+                // Sign them out
+                await signOut(auth);
+                currentUser = null;
+                currentGoogleId = null;
+                alert('Your data has been deleted. You have been signed out.');
+                showLogin();
+            } catch (error) {
+                console.error('Error deleting data:', error);
+                alert('Failed to delete data. Please try again.');
+            }
+        };
+
         // Sign Out
         window.signOutUser = async function() {
             try {
                 await signOut(auth);
+                currentUser = null;
+                currentGoogleId = null;
                 showLogin();
             } catch (error) {
                 console.error('Sign out error:', error);
@@ -312,11 +528,25 @@
 
         // Listen for auth state changes
         console.log('👂 Setting up auth state listener...');
-        onAuthStateChanged(auth, (user) => {
-            console.log('🔄 Auth state changed:', user ? 'LOGGED IN' : 'NOT LOGGED IN');
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
-                showQR(user);
+                currentUser = user;
+                console.log('🔄 Auth state changed: LOGGED IN as', user.email);
+                
+                // Check if they've consented
+                const hasConsented = await checkConsent(user);
+                
+                if (hasConsented) {
+                    const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
+                    currentGoogleId = googleProvider?.uid || user.uid;
+                    showQR(user);
+                } else {
+                    showConsent(user);
+                }
             } else {
+                currentUser = null;
+                currentGoogleId = null;
+                console.log('🔄 Auth state changed: NOT LOGGED IN');
                 showLogin();
             }
         });
@@ -333,12 +563,23 @@
         </button>
     </div>
 
+    <!-- Consent View -->
+    <div id="consent-container">
+        <h2>Help Desk Access</h2>
+        <p>We store your Google ID to help debug lunch ticket issues.</p>
+        <p>Data stored: Google ID, Email, Consent timestamp</p>
+        <p>Data retained indefinitely. You can delete your data anytime.</p>
+        <button class="consent-btn" onclick="agreeConsent()">I Agree & Continue</button>
+        <button class="cancel-btn" onclick="declineConsent()">Cancel</button>
+    </div>
+
     <!-- QR View -->
     <div id="user-info"></div>
     <div id="qr-container">
         <img id="qr" src="" alt="QR Code" />
         <div id="date-text" id="date-display"></div>
         <button class="logout-btn" onclick="signOutUser()">Sign Out</button>
+        <button class="delete-btn" onclick="deleteMyData()">Delete My Data</button>
     </div>
 </body>
 </html>

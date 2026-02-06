@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard - Lunch Ticket</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .admin-info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .admin-info h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+
+        .admin-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .login-btn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-btn:hover {
+            background-color: #3367d6;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .search-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        .actions {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .export-btn:hover {
+            background-color: #218838;
+        }
+
+        .refresh-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .refresh-btn:hover {
+            background-color: #5a6268;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .qr-btn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .qr-btn:hover {
+            background-color: #3367d6;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .qr-modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 90vw;
+        }
+
+        .qr-modal img {
+            max-width: 300px;
+            max-height: 300px;
+        }
+
+        .qr-modal button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+
+            .qr-btn, .delete-btn {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎫 Lunch Ticket Admin Dashboard</h1>
+
+    <div id="login-section">
+        <div class="admin-info">
+            <h3>Admin Access Required</h3>
+            <p>You must sign in with your admin Google account to view user data.</p>
+            <p>Only authorized administrators can access this dashboard.</p>
+        </div>
+        <button class="login-btn" onclick="signInAdmin()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" height="18">
+            Sign in with Google
+        </button>
+    </div>
+
+    <div id="admin-section" style="display: none;">
+        <div class="admin-info">
+            <h3>Welcome, <span id="admin-name"></span></h3>
+            <p>Signed in as: <span id="admin-email"></span></p>
+            <p>Total users: <strong id="user-count">0</strong></p>
+        </div>
+
+        <button class="logout-btn" onclick="signOutAdmin()">Sign Out</button>
+
+        <input type="text" class="search-box" id="search-box" placeholder="Search by email or name..." onkeyup="filterUsers()">
+
+        <div class="actions">
+            <button class="refresh-btn" onclick="loadUsers()">🔄 Refresh</button>
+            <button class="export-btn" onclick="exportToCSV()">📥 Export to CSV</button>
+        </div>
+
+        <div id="message-area"></div>
+
+        <table id="users-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Name</th>
+                    <th>Google ID</th>
+                    <th>Consented</th>
+                    <th>Last Used</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+            </tbody>
+        </table>
+    </div>
+
+    <div id="qr-modal" class="qr-modal" onclick="closeQRModal()">
+        <div class="qr-modal-content" onclick="event.stopPropagation()">
+            <h3>QR Code</h3>
+            <img id="modal-qr" src="" alt="QR Code">
+            <p id="modal-user-info"></p>
+            <button onclick="closeQRModal()">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut,
+            onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getFirestore, 
+            collection, 
+            getDocs, 
+            doc, 
+            deleteDoc 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Your Firebase config (same as main app)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
+            authDomain: "lunchkod1239123.firebaseapp.com",
+            projectId: "lunchkod1239123",
+            storageBucket: "lunchkod1239123.firebasestorage.app",
+            messagingSenderId: "198521085351",
+            appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        let currentAdmin = null;
+        let allUsers = [];
+
+        // Admin email (REPLACE WITH YOUR EMAIL)
+        const ADMIN_EMAIL = "olle.zetterstrom@student.tabyenskilda.se";
+
+        // Show message
+        function showMessage(message, isError = false) {
+            const area = document.getElementById('message-area');
+            area.innerHTML = `<div class="${isError ? 'error-message' : 'success-message'}">${message}</div>`;
+            setTimeout(() => {
+                area.innerHTML = '';
+            }, 5000);
+        }
+
+        // Sign in as admin
+        window.signInAdmin = async function() {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                currentAdmin = result.user;
+                
+                // Check if this is the admin
+                if (currentAdmin.email !== ADMIN_EMAIL) {
+                    showMessage('Access denied. You are not authorized as an admin.', true);
+                    await signOut(auth);
+                    return;
+                }
+
+                showAdminSection();
+                loadUsers();
+            } catch (error) {
+                console.error('Sign in error:', error);
+                showMessage('Sign in failed: ' + error.message, true);
+            }
+        };
+
+        // Sign out
+        window.signOutAdmin = async function() {
+            try {
+                await signOut(auth);
+                currentAdmin = null;
+                showLoginSection();
+            } catch (error) {
+                console.error('Sign out error:', error);
+            }
+        };
+
+        // Show admin section
+        function showAdminSection() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'block';
+            document.getElementById('admin-name').textContent = currentAdmin.displayName;
+            document.getElementById('admin-email').textContent = currentAdmin.email;
+        }
+
+        // Show login section
+        function showLoginSection() {
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('admin-section').style.display = 'none';
+        }
+
+        // Load all users
+        window.loadUsers = async function() {
+            try {
+                const querySnapshot = await getDocs(collection(db, 'user_consents'));
+                allUsers = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    allUsers.push({
+                        id: doc.id,
+                        ...data,
+                        consentedAt: data.consentedAt?.toDate?.() || data.consentedAt,
+                        lastUsed: data.lastUsed?.toDate?.() || data.lastUsed
+                    });
+                });
+
+                // Sort by consent date (newest first)
+                allUsers.sort((a, b) => (b.consentedAt || 0) - (a.consentedAt || 0));
+
+                document.getElementById('user-count').textContent = allUsers.length;
+                displayUsers(allUsers);
+                showMessage(`Loaded ${allUsers.length} users`);
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showMessage('Failed to load users: ' + error.message, true);
+            }
+        };
+
+        // Display users in table
+        function displayUsers(users) {
+            const tbody = document.getElementById('users-tbody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                
+                const consentedDate = user.consentedAt ? 
+                    new Date(user.consentedAt).toLocaleDateString() : 'N/A';
+                const lastUsedDate = user.lastUsed ? 
+                    new Date(user.lastUsed).toLocaleDateString() : 'N/A';
+                
+                row.innerHTML = `
+                    <td>${user.email || 'N/A'}</td>
+                    <td>${user.displayName || 'N/A'}</td>
+                    <td style="font-family: monospace; font-size: 11px;">${user.googleId || 'N/A'}</td>
+                    <td>${consentedDate}</td>
+                    <td>${lastUsedDate}</td>
+                    <td>
+                        <button class="qr-btn" onclick="generateQRForUser('${user.googleId}', '${user.email}', '${user.displayName}')">Show QR</button>
+                        <button class="delete-btn" onclick="deleteUser('${user.id}', '${user.email}')">Delete</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Filter users
+        window.filterUsers = function() {
+            const searchTerm = document.getElementById('search-box').value.toLowerCase();
+            const filtered = allUsers.filter(user => 
+                (user.email && user.email.toLowerCase().includes(searchTerm)) ||
+                (user.displayName && user.displayName.toLowerCase().includes(searchTerm)) ||
+                (user.googleId && user.googleId.toLowerCase().includes(searchTerm))
+            );
+            displayUsers(filtered);
+        };
+
+        // Generate QR for user
+        window.generateQRForUser = function(googleId, email, name) {
+            if (!googleId) {
+                showMessage('No Google ID available for this user', true);
+                return;
+            }
+
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            
+            const fullString = `:${month}${day};${googleId}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
+            
+            document.getElementById('modal-qr').src = qrUrl;
+            document.getElementById('modal-user-info').textContent = `${name} (${email})`;
+            document.getElementById('qr-modal').style.display = 'flex';
+        };
+
+        // Close QR modal
+        window.closeQRModal = function() {
+            document.getElementById('qr-modal').style.display = 'none';
+        };
+
+        // Delete user
+        window.deleteUser = async function(userId, email) {
+            if (!confirm(`Are you sure you want to delete data for ${email}?`)) {
+                return;
+            }
+
+            try {
+                await deleteDoc(doc(db, 'user_consents', userId));
+                showMessage(`Deleted user: ${email}`);
+                loadUsers(); // Refresh the list
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showMessage('Failed to delete user: ' + error.message, true);
+            }
+        };
+
+        // Export to CSV
+        window.exportToCSV = function() {
+            if (allUsers.length === 0) {
+                showMessage('No users to export', true);
+                return;
+            }
+
+            const headers = ['Email', 'Name', 'Google ID', 'Consented At', 'Last Used'];
+            const rows = allUsers.map(user => [
+                user.email || '',
+                user.displayName || '',
+                user.googleId || '',
+                user.consentedAt ? new Date(user.consentedAt).toISOString() : '',
+                user.lastUsed ? new Date(user.lastUsed).toISOString() : ''
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `lunch-ticket-users-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            showMessage(`Exported ${allUsers.length} users to CSV`);
+        };
+
+        // Listen for auth state
+        onAuthStateChanged(auth, (user) => {
+            if (user && user.email === ADMIN_EMAIL) {
+                currentAdmin = user;
+                showAdminSection();
+                loadUsers();
+            } else {
+                showLoginSection();
+            }
+        });
+    </script>
+</body>
+</html>
