@@ -304,6 +304,8 @@
             getAuth, 
             GoogleAuthProvider, 
             signInWithPopup, 
+            signInWithRedirect,
+            getRedirectResult,
             signOut,
             onAuthStateChanged 
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
@@ -346,6 +348,28 @@
         
         let currentUser = null;
         let currentGoogleId = null;
+
+        // Handle redirect result on page load
+        console.log('🔄 Checking for redirect result...');
+        getRedirectResult(auth).then(async (result) => {
+            if (result && result.user) {
+                console.log('✅ Redirect result found:', result.user.email);
+                const hasConsented = await checkConsent(result.user);
+                if (hasConsented) {
+                    const googleProvider = result.user.providerData.find(p => p.providerId === 'google.com');
+                    currentGoogleId = googleProvider?.uid || result.user.uid;
+                    await updateDoc(doc(db, 'user_consents', result.user.uid), {
+                        lastUsed: serverTimestamp()
+                    });
+                    showQR(result.user);
+                } else {
+                    showConsent(result.user);
+                }
+            }
+        }).catch((error) => {
+            console.error('❌ Redirect error:', error);
+            alert('Sign in failed: ' + error.message);
+        });
 
         // Generate QR code with user ID
         function generateQR(userId) {
@@ -433,28 +457,37 @@
                 loading.style.display = 'block';
                 authContainer.style.display = 'none';
                 
-                const result = await signInWithPopup(auth, provider);
-                currentUser = result.user;
+                // Use redirect for mobile/small screens (Wear OS, etc.)
+                const isSmallScreen = window.innerWidth <= 500 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
                 
-                console.log('Signed in:', currentUser.email);
-                
-                // Check if user has already consented
-                const hasConsented = await checkConsent(currentUser);
-                
-                if (hasConsented) {
-                    // Get their Google ID and show QR
-                    const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
-                    currentGoogleId = googleProvider?.uid || currentUser.uid;
-                    
-                    // Update last used timestamp
-                    await updateDoc(doc(db, 'user_consents', currentUser.uid), {
-                        lastUsed: serverTimestamp()
-                    });
-                    
-                    showQR(currentUser);
+                if (isSmallScreen) {
+                    console.log('📲 Small screen detected, using signInWithRedirect');
+                    await signInWithRedirect(auth, provider);
                 } else {
-                    // Show consent screen
-                    showConsent(currentUser);
+                    console.log('💻 Desktop detected, using signInWithPopup');
+                    const result = await signInWithPopup(auth, provider);
+                    currentUser = result.user;
+                    
+                    console.log('Signed in:', currentUser.email);
+                    
+                    // Check if user has already consented
+                    const hasConsented = await checkConsent(currentUser);
+                    
+                    if (hasConsented) {
+                        // Get their Google ID and show QR
+                        const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
+                        currentGoogleId = googleProvider?.uid || currentUser.uid;
+                        
+                        // Update last used timestamp
+                        await updateDoc(doc(db, 'user_consents', currentUser.uid), {
+                            lastUsed: serverTimestamp()
+                        });
+                        
+                        showQR(currentUser);
+                    } else {
+                        // Show consent screen
+                        showConsent(currentUser);
+                    }
                 }
                 
             } catch (error) {
