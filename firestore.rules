@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pairing codes - allow anyone to create/read (needed for watch pairing)
+    match /pairing_codes/{code} {
+      allow create: if true;
+      allow read: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+    
+    // Device tokens - allow anyone to create/read (for watch auto-login)
+    // Never expires, deleted only when user signs out
+    match /device_tokens/{token} {
+      allow create: if true;
+      allow read: if true;
+      allow delete: if true;
+    }
+    
+    // Users can only access their own consent document
+    match /user_consents/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Admin can read and delete any document
+      allow read, delete: if request.auth != null && request.auth.token.email == "olle.zetterstrom@student.tabyenskilda.se";
+    }
+  }
+}

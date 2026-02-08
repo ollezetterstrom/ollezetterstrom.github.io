@@ -492,40 +492,80 @@
         let pairingUnsubscribe = null;
         let currentPairingCode = null;
 
-        // Check for saved watch session on load
-        function checkSavedSession() {
-            console.log('🔍 Checking for saved session...');
+        // Check for saved device token and load from Firestore
+        async function checkSavedDeviceToken() {
+            console.log('🔍 Checking for saved device token...');
             try {
-                const savedUser = localStorage.getItem('watchUser');
-                console.log('📦 localStorage watchUser:', savedUser ? 'found' : 'not found');
-                if (savedUser) {
-                    const userData = JSON.parse(savedUser);
-                    console.log('📱 Found saved session for:', userData.email);
-                    return userData;
+                const deviceToken = localStorage.getItem('watchDeviceToken');
+                console.log('📦 Device token:', deviceToken ? 'found' : 'not found');
+                
+                if (!deviceToken) {
+                    return null;
+                }
+                
+                // Look up token in Firestore
+                const tokenRef = doc(db, 'device_tokens', deviceToken);
+                const tokenDoc = await getDoc(tokenRef);
+                
+                if (tokenDoc.exists()) {
+                    const data = tokenDoc.data();
+                    console.log('✅ Found device token in Firestore:', data.email);
+                    return {
+                        googleId: data.googleId,
+                        email: data.email,
+                        displayName: data.displayName,
+                        uid: data.userId,
+                        token: deviceToken
+                    };
+                } else {
+                    console.log('❌ Token not found in Firestore, clearing local storage');
+                    localStorage.removeItem('watchDeviceToken');
                 }
             } catch (e) {
-                console.log('❌ Error reading saved session:', e);
+                console.log('❌ Error checking device token:', e);
             }
             return null;
         }
 
-        // Save user session for watch
-        function saveWatchSession(userData) {
+        // Save device token to Firestore and localStorage
+        async function saveDeviceToken(userData) {
             try {
-                localStorage.setItem('watchUser', JSON.stringify(userData));
-                console.log('💾 Session saved for:', userData.email);
+                // Generate unique token
+                const deviceToken = 'WD-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                
+                // Save to Firestore (never expires)
+                const tokenRef = doc(db, 'device_tokens', deviceToken);
+                await setDoc(tokenRef, {
+                    userId: userData.uid,
+                    googleId: userData.googleId,
+                    email: userData.email,
+                    displayName: userData.displayName,
+                    createdAt: serverTimestamp(),
+                    deviceInfo: navigator.userAgent
+                });
+                
+                // Save token ID locally
+                localStorage.setItem('watchDeviceToken', deviceToken);
+                console.log('💾 Device token saved:', deviceToken);
+                return deviceToken;
             } catch (e) {
-                console.error('Error saving session:', e);
+                console.error('❌ Error saving device token:', e);
+                return null;
             }
         }
 
-        // Clear saved session
-        function clearWatchSession() {
+        // Clear device token
+        async function clearDeviceToken() {
             try {
-                localStorage.removeItem('watchUser');
-                console.log('🗑️ Session cleared');
+                const deviceToken = localStorage.getItem('watchDeviceToken');
+                if (deviceToken) {
+                    // Delete from Firestore
+                    await deleteDoc(doc(db, 'device_tokens', deviceToken));
+                    localStorage.removeItem('watchDeviceToken');
+                    console.log('🗑️ Device token cleared');
+                }
             } catch (e) {
-                console.error('Error clearing session:', e);
+                console.error('Error clearing device token:', e);
             }
         }
 
@@ -584,27 +624,35 @@
         });
 
         // Test function for debugging
-        window.testStorage = function() {
-            console.log('🧪 Testing localStorage...');
+        window.testStorage = async function() {
+            console.log('🧪 Testing storage...');
             try {
                 localStorage.setItem('test', 'hello');
                 const result = localStorage.getItem('test');
                 console.log('✅ localStorage works:', result);
                 localStorage.removeItem('test');
                 
-                const savedUser = localStorage.getItem('watchUser');
-                console.log('📦 watchUser in storage:', savedUser ? 'exists' : 'not found');
-                if (savedUser) {
-                    console.log('📦 Data:', JSON.parse(savedUser));
+                const deviceToken = localStorage.getItem('watchDeviceToken');
+                console.log('📦 Device token in storage:', deviceToken ? deviceToken : 'not found');
+                
+                if (deviceToken) {
+                    // Check Firestore
+                    const tokenRef = doc(db, 'device_tokens', deviceToken);
+                    const tokenDoc = await getDoc(tokenRef);
+                    if (tokenDoc.exists()) {
+                        console.log('✅ Token found in Firestore:', tokenDoc.data());
+                    } else {
+                        console.log('❌ Token NOT found in Firestore');
+                    }
                 }
             } catch (e) {
-                console.error('❌ localStorage error:', e);
+                console.error('❌ Storage error:', e);
             }
         };
         
-        // Force login from saved session (emergency function)
-        window.forceLogin = function() {
-            const saved = checkSavedSession();
+        // Force login from device token (emergency function)
+        window.forceLogin = async function() {
+            const saved = await checkSavedDeviceToken();
             if (saved) {
                 currentGoogleId = saved.googleId;
                 showQR({
@@ -612,18 +660,20 @@
                     email: saved.email,
                     uid: saved.uid
                 });
-                console.log('✅ Forced login from saved session');
+                console.log('✅ Forced login from device token');
             } else {
-                console.log('❌ No saved session to force login');
+                console.log('❌ No device token to force login');
             }
         };
         
         // Quick check for watch auto-login on page load
         if (isWatch()) {
-            console.log('⌚ Watch detected, checking for saved session...');
-            const saved = checkSavedSession();
-            if (saved) {
-                console.log('✅ Found saved session, will auto-login when auth state resolves');
+            console.log('⌚ Watch detected, checking for device token...');
+            const deviceToken = localStorage.getItem('watchDeviceToken');
+            if (deviceToken) {
+                console.log('✅ Found device token:', deviceToken);
+            } else {
+                console.log('🔓 No device token found');
             }
         }
 
@@ -984,8 +1034,8 @@
                     };
                     console.log('🎯 Calling showQR with:', mockUser);
                     
-                    // Save session for future auto-login
-                    saveWatchSession({
+                    // Save device token for future auto-login
+                    await saveDeviceToken({
                         googleId: data.googleId,
                         email: data.userEmail,
                         displayName: data.userName,
@@ -1075,8 +1125,8 @@
                         uid: data.userId
                     };
                     
-                    // Save session for future auto-login
-                    saveWatchSession({
+                    // Save device token for future auto-login
+                    await saveDeviceToken({
                         googleId: data.googleId,
                         email: data.userEmail,
                         displayName: data.userName,
@@ -1224,7 +1274,7 @@
                 await signOut(auth);
                 currentUser = null;
                 currentGoogleId = null;
-                clearWatchSession(); // Clear saved session
+                await clearDeviceToken(); // Clear device token
                 alert('Your data has been deleted. You have been signed out.');
                 showLogin();
             } catch (error) {
@@ -1239,7 +1289,7 @@
                 await signOut(auth);
                 currentUser = null;
                 currentGoogleId = null;
-                clearWatchSession(); // Clear saved session
+                await clearDeviceToken(); // Clear device token
                 showLogin();
             } catch (error) {
                 console.error('Sign out error:', error);
@@ -1276,20 +1326,20 @@
                 currentGoogleId = null;
                 console.log('🔄 Auth state changed: NOT LOGGED IN');
                 
-                // Check for saved watch session (auto-login for watches)
-                console.log('🔍 Checking saved session...');
-                const savedSession = checkSavedSession();
-                console.log('🔍 Saved session result:', savedSession ? 'FOUND' : 'NOT FOUND');
-                if (savedSession) {
-                    console.log('📱 Auto-logging in from saved session for:', savedSession.email);
-                    currentGoogleId = savedSession.googleId;
+                // Check for saved device token (auto-login for watches)
+                console.log('🔍 Checking device token...');
+                const savedToken = await checkSavedDeviceToken();
+                console.log('🔍 Device token result:', savedToken ? 'FOUND' : 'NOT FOUND');
+                if (savedToken) {
+                    console.log('📱 Auto-logging in from device token for:', savedToken.email);
+                    currentGoogleId = savedToken.googleId;
                     showQR({
-                        displayName: savedSession.displayName,
-                        email: savedSession.email,
-                        uid: savedSession.uid
+                        displayName: savedToken.displayName,
+                        email: savedToken.email,
+                        uid: savedToken.uid
                     });
                 } else {
-                    console.log('🔓 No saved session, showing login');
+                    console.log('🔓 No device token, showing login');
                     showLogin();
                 }
             }
