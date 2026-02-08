@@ -583,6 +583,50 @@
             showLogin();
         });
 
+        // Test function for debugging
+        window.testStorage = function() {
+            console.log('🧪 Testing localStorage...');
+            try {
+                localStorage.setItem('test', 'hello');
+                const result = localStorage.getItem('test');
+                console.log('✅ localStorage works:', result);
+                localStorage.removeItem('test');
+                
+                const savedUser = localStorage.getItem('watchUser');
+                console.log('📦 watchUser in storage:', savedUser ? 'exists' : 'not found');
+                if (savedUser) {
+                    console.log('📦 Data:', JSON.parse(savedUser));
+                }
+            } catch (e) {
+                console.error('❌ localStorage error:', e);
+            }
+        };
+        
+        // Force login from saved session (emergency function)
+        window.forceLogin = function() {
+            const saved = checkSavedSession();
+            if (saved) {
+                currentGoogleId = saved.googleId;
+                showQR({
+                    displayName: saved.displayName,
+                    email: saved.email,
+                    uid: saved.uid
+                });
+                console.log('✅ Forced login from saved session');
+            } else {
+                console.log('❌ No saved session to force login');
+            }
+        };
+        
+        // Quick check for watch auto-login on page load
+        if (isWatch()) {
+            console.log('⌚ Watch detected, checking for saved session...');
+            const saved = checkSavedSession();
+            if (saved) {
+                console.log('✅ Found saved session, will auto-login when auth state resolves');
+            }
+        }
+
         // Generate QR code with user ID
         function generateQR(userId) {
             const now = new Date();
