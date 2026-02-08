@@ -503,17 +503,32 @@
 
         // Show QR view
         function showQR(user) {
-            consentContainer.style.display = 'none';
-            authContainer.style.display = 'none';
-            loading.style.display = 'none';
-            qrContainer.style.display = 'flex';
+            console.log('🎯 showQR called with user:', user?.email, 'googleId:', currentGoogleId);
             
-            userInfo.innerHTML = `
-                <h3>${user.displayName || 'User'}</h3>
-                <p>${user.email}</p>
-            `;
-            
-            generateQR(currentGoogleId);
+            try {
+                consentContainer.style.display = 'none';
+                authContainer.style.display = 'none';
+                loading.style.display = 'none';
+                qrContainer.style.display = 'flex';
+                document.getElementById('pairing-container').style.display = 'none';
+                
+                userInfo.innerHTML = `
+                    <h3>${user.displayName || 'User'}</h3>
+                    <p>${user.email}</p>
+                `;
+                
+                if (!currentGoogleId) {
+                    console.error('❌ No googleId set!');
+                    document.getElementById('pairing-status').textContent = 'Error: No Google ID';
+                    return;
+                }
+                
+                generateQR(currentGoogleId);
+                console.log('✅ QR displayed successfully');
+            } catch (error) {
+                console.error('❌ Error in showQR:', error);
+                document.getElementById('pairing-status').textContent = 'Error displaying QR';
+            }
         }
 
         // Show consent view
@@ -715,15 +730,22 @@
             console.log('🔑 Pairing code created:', currentPairingCode);
             
             // Listen for pairing completion
+            console.log('👂 Setting up pairing listener for code:', currentPairingCode);
             pairingUnsubscribe = onSnapshot(pairingRef, async (snapshot) => {
-                if (!snapshot.exists()) return;
+                console.log('📡 Snapshot received, exists:', snapshot.exists());
+                
+                if (!snapshot.exists()) {
+                    console.log('❌ Pairing doc does not exist');
+                    return;
+                }
                 
                 const data = snapshot.data();
-                console.log('📡 Pairing update:', data.status);
+                console.log('📡 Pairing update:', data.status, data);
                 
                 if (data.status === 'paired' && data.userId) {
                     // User has paired! Get their info
                     console.log('✅ Device paired with user:', data.userEmail);
+                    console.log('✅ Google ID:', data.googleId);
                     
                     // Clean up
                     if (pairingUnsubscribe) {
@@ -745,7 +767,9 @@
                         email: data.userEmail,
                         uid: data.userId
                     };
+                    console.log('🎯 Calling showQR with:', mockUser);
                     showQR(mockUser);
+                    console.log('✅ showQR called');
                     
                     // Clean up pairing doc after a delay
                     setTimeout(async () => {
@@ -756,6 +780,8 @@
                         }
                     }, 5000);
                 }
+            }, (error) => {
+                console.error('❌ Pairing listener error:', error);
             });
             
             // Auto-expire after 5 minutes
@@ -793,6 +819,8 @@
             const codeInput = document.getElementById('pairing-code-input');
             const code = codeInput.value.trim();
             
+            console.log('📱 Submitting pairing code:', code);
+            
             if (code.length !== 6 || !/^\d+$/.test(code)) {
                 alert('Please enter a valid 6-digit code');
                 return;
@@ -806,15 +834,19 @@
             try {
                 // Check if code exists
                 const pairingRef = doc(db, 'pairing_codes', code);
+                console.log('🔍 Checking pairing doc:', code);
                 const pairingDoc = await getDoc(pairingRef);
                 
                 if (!pairingDoc.exists()) {
+                    console.log('❌ Pairing doc not found');
                     alert('Invalid or expired code. Please check and try again.');
                     codeInput.value = '';
                     return;
                 }
                 
                 const pairingData = pairingDoc.data();
+                console.log('📋 Pairing data:', pairingData);
+                
                 if (pairingData.status !== 'waiting') {
                     alert('This code has already been used.');
                     codeInput.value = '';
@@ -825,6 +857,7 @@
                 const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
                 const googleId = googleProvider?.uid || currentUser.uid;
                 
+                console.log('📝 Updating pairing doc with user info...');
                 // Update pairing document with user info
                 await updateDoc(pairingRef, {
                     status: 'paired',
@@ -835,11 +868,12 @@
                     pairedAt: serverTimestamp()
                 });
                 
+                console.log('✅ Pairing doc updated successfully');
                 alert('Watch linked successfully!');
                 codeInput.value = '';
                 
             } catch (error) {
-                console.error('Pairing error:', error);
+                console.error('❌ Pairing error:', error);
                 alert('Error linking watch: ' + error.message);
             }
         };
