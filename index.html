@@ -541,11 +541,10 @@
                 pairingUnsubscribe = null;
             }
             
-            // Show watch pairing button if on small screen
-            const isSmallScreen = window.innerWidth <= 500 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+            // Always show both options - let user choose
             const watchBtn = document.getElementById('watch-pair-btn');
             if (watchBtn) {
-                watchBtn.style.display = isSmallScreen ? 'block' : 'none';
+                watchBtn.style.display = 'block';
             }
         }
 
@@ -1046,10 +1045,10 @@
             Sign in with Google
         </button>
         <button class="use-pairing-btn" onclick="showPairingEntry()">
-            Have a code from your watch?
+            I have a code (Sign in on phone)
         </button>
-        <button class="use-pairing-btn" onclick="showPairingCode()" style="display: none;" id="watch-pair-btn">
-            Watch Login (Use Code)
+        <button class="use-pairing-btn" onclick="showPairingCode()" id="watch-pair-btn">
+            I'm on a watch (Get code)
         </button>
     </div>
 
