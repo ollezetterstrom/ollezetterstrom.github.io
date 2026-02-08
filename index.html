@@ -494,15 +494,17 @@
 
         // Check for saved watch session on load
         function checkSavedSession() {
+            console.log('🔍 Checking for saved session...');
             try {
                 const savedUser = localStorage.getItem('watchUser');
+                console.log('📦 localStorage watchUser:', savedUser ? 'found' : 'not found');
                 if (savedUser) {
                     const userData = JSON.parse(savedUser);
                     console.log('📱 Found saved session for:', userData.email);
                     return userData;
                 }
             } catch (e) {
-                console.log('No saved session');
+                console.log('❌ Error reading saved session:', e);
             }
             return null;
         }
@@ -1231,9 +1233,11 @@
                 console.log('🔄 Auth state changed: NOT LOGGED IN');
                 
                 // Check for saved watch session (auto-login for watches)
+                console.log('🔍 Checking saved session...');
                 const savedSession = checkSavedSession();
+                console.log('🔍 Saved session result:', savedSession ? 'FOUND' : 'NOT FOUND');
                 if (savedSession) {
-                    console.log('📱 Auto-logging in from saved session');
+                    console.log('📱 Auto-logging in from saved session for:', savedSession.email);
                     currentGoogleId = savedSession.googleId;
                     showQR({
                         displayName: savedSession.displayName,
@@ -1241,6 +1245,7 @@
                         uid: savedSession.uid
                     });
                 } else {
+                    console.log('🔓 No saved session, showing login');
                     showLogin();
                 }
             }
