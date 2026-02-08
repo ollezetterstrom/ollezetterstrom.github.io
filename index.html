@@ -805,6 +805,72 @@
             }, 300000); // 5 minutes
         }
 
+        // Manual check for pairing status (fallback)
+        window.manualCheckPairing = async function() {
+            if (!currentPairingCode) {
+                console.log('❌ No pairing code to check');
+                return;
+            }
+            
+            console.log('🔍 Manual check for pairing code:', currentPairingCode);
+            document.getElementById('pairing-status').textContent = 'Checking...';
+            
+            try {
+                const pairingRef = doc(db, 'pairing_codes', currentPairingCode);
+                const pairingDoc = await getDoc(pairingRef);
+                
+                if (!pairingDoc.exists()) {
+                    document.getElementById('pairing-status').textContent = 'Code not found or expired';
+                    document.getElementById('pairing-status').style.color = '#f44336';
+                    return;
+                }
+                
+                const data = pairingDoc.data();
+                console.log('📋 Manual check - pairing data:', data);
+                
+                if (data.status === 'paired' && data.userId) {
+                    console.log('✅ Found paired data!');
+                    
+                    // Stop listening
+                    if (pairingUnsubscribe) {
+                        pairingUnsubscribe();
+                        pairingUnsubscribe = null;
+                    }
+                    
+                    // Show paired message
+                    document.getElementById('pairing-code-display').style.display = 'none';
+                    document.getElementById('pairing-instructions').style.display = 'none';
+                    document.getElementById('pairing-status').textContent = 'Connected! Loading...';
+                    document.getElementById('pairing-status').style.color = '#4CAF50';
+                    
+                    // Show QR
+                    currentGoogleId = data.googleId;
+                    const mockUser = {
+                        displayName: data.userName,
+                        email: data.userEmail,
+                        uid: data.userId
+                    };
+                    showQR(mockUser);
+                    
+                    // Clean up
+                    setTimeout(async () => {
+                        try {
+                            await deleteDoc(pairingRef);
+                        } catch (e) {
+                            console.log('Error cleaning up:', e);
+                        }
+                    }, 5000);
+                } else {
+                    document.getElementById('pairing-status').textContent = 'Still waiting...';
+                    document.getElementById('pairing-status').style.color = 'white';
+                }
+            } catch (error) {
+                console.error('❌ Manual check error:', error);
+                document.getElementById('pairing-status').textContent = 'Error checking. Try again.';
+                document.getElementById('pairing-status').style.color = '#f44336';
+            }
+        };
+
         // Show pairing entry view (for phone) - make global
         window.showPairingEntry = function() {
             loading.style.display = 'none';
@@ -1001,6 +1067,7 @@
             then enter this code on your QR page
         </p>
         <div id="pairing-status" class="pairing-status">Waiting for phone...</div>
+        <button class="back-btn" onclick="manualCheckPairing()" style="margin-top: 10px;">Check Connection</button>
         <button class="back-btn" onclick="cancelPairing()">Cancel</button>
     </div>
 
