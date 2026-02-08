@@ -365,16 +365,47 @@
             font-size: 9px;
         }
         body.watch-mode #qr-container img {
-            width: 55vmin;
-            height: 55vmin;
-            max-width: 200px;
-            max-height: 200px;
+            width: 92vmin;
+            height: 92vmin;
+            max-width: none;
+            max-height: none;
         }
         body.watch-mode .delete-btn {
             display: none !important;
         }
         body.watch-mode #pairing-section {
             display: none !important;
+        }
+        body.watch-mode #qr-container {
+            padding: 2px;
+            gap: 2px;
+            position: relative;
+        }
+        body.watch-mode #user-info {
+            position: absolute;
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 2px 6px;
+            border-radius: 10px;
+            z-index: 10;
+        }
+        body.watch-mode #user-info h3 {
+            font-size: 8px;
+            margin: 0;
+        }
+        body.watch-mode #user-info p {
+            font-size: 6px;
+            margin: 0;
+        }
+        body.watch-mode .logout-btn {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            padding: 1px 4px !important;
+            font-size: 6px !important;
+            z-index: 10;
         }
 
         /* Landscape orientation on phones */
@@ -563,22 +594,65 @@
                     document.body.classList.add('watch-mode');
                     // Hide pairing section on watch
                     if (pairingSection) pairingSection.style.display = 'none';
-                    // Make buttons smaller on watch
+                    // Position user info as overlay
+                    if (userInfo) {
+                        userInfo.style.position = 'absolute';
+                        userInfo.style.top = '5px';
+                        userInfo.style.left = '50%';
+                        userInfo.style.transform = 'translateX(-50%)';
+                        userInfo.style.background = 'rgba(0,0,0,0.8)';
+                        userInfo.style.padding = '3px 8px';
+                        userInfo.style.borderRadius = '10px';
+                        userInfo.style.zIndex = '100';
+                    }
+                    // Position logout button bottom right
                     if (logoutBtn) {
+                        logoutBtn.style.position = 'absolute';
+                        logoutBtn.style.bottom = '5px';
+                        logoutBtn.style.right = '5px';
                         logoutBtn.style.padding = '2px 6px';
-                        logoutBtn.style.fontSize = '8px';
-                        logoutBtn.style.marginTop = '2px';
+                        logoutBtn.style.fontSize = '7px';
+                        logoutBtn.style.zIndex = '100';
+                        logoutBtn.style.background = 'rgba(0,0,0,0.8)';
+                        logoutBtn.style.color = 'white';
+                        logoutBtn.style.border = '1px solid rgba(255,255,255,0.3)';
                     }
                     if (deleteBtn) deleteBtn.style.display = 'none';
+                    // Make qr container position relative for absolute children
+                    if (qrContainer) {
+                        qrContainer.style.position = 'relative';
+                    }
                 } else {
                     // Remove watch class
                     document.body.classList.remove('watch-mode');
                     // Show pairing section on desktop
                     if (pairingSection) pairingSection.style.display = 'block';
+                    // Reset user info styles
+                    if (userInfo) {
+                        userInfo.style.position = '';
+                        userInfo.style.top = '';
+                        userInfo.style.left = '';
+                        userInfo.style.transform = '';
+                        userInfo.style.background = '';
+                        userInfo.style.padding = '';
+                        userInfo.style.borderRadius = '';
+                        userInfo.style.zIndex = '';
+                    }
+                    // Reset logout button styles
                     if (logoutBtn) {
+                        logoutBtn.style.position = '';
+                        logoutBtn.style.bottom = '';
+                        logoutBtn.style.right = '';
                         logoutBtn.style.padding = '';
                         logoutBtn.style.fontSize = '';
-                        logoutBtn.style.marginTop = '';
+                        logoutBtn.style.zIndex = '';
+                        logoutBtn.style.background = '';
+                        logoutBtn.style.color = '';
+                        logoutBtn.style.border = '';
+                    }
+                    // Reset qr container
+                    if (qrContainer) {
+                        qrContainer.style.position = '';
                     }
                     if (deleteBtn) deleteBtn.style.display = 'block';
                 }
