@@ -731,52 +731,30 @@
                         pairingUnsubscribe = null;
                     }
                     
-                    // Store the paired user info temporarily
-                    const pairedUserInfo = {
-                        uid: data.userId,
-                        email: data.userEmail,
-                        displayName: data.userName,
-                        googleId: data.googleId
-                    };
-                    
                     // Show paired message
                     document.getElementById('pairing-code-display').style.display = 'none';
                     document.getElementById('pairing-instructions').style.display = 'none';
                     document.getElementById('pairing-status').textContent = 'Connected! Loading...';
                     document.getElementById('pairing-status').style.color = '#4CAF50';
                     
-                    // Check consent and show QR directly
-                    const hasConsented = await checkConsent(pairedUserInfo);
+                    // Phone has already verified consent, just show QR directly
+                    currentGoogleId = data.googleId;
+                    // Create a mock user object for display
+                    const mockUser = {
+                        displayName: data.userName,
+                        email: data.userEmail,
+                        uid: data.userId
+                    };
+                    showQR(mockUser);
                     
-                    if (hasConsented) {
-                        currentGoogleId = data.googleId;
-                        // Create a mock user object for display
-                        const mockUser = {
-                            displayName: data.userName,
-                            email: data.userEmail,
-                            uid: data.userId
-                        };
-                        showQR(mockUser);
-                        
-                        // Update last used
-                        await updateDoc(doc(db, 'user_consents', data.userId), {
-                            lastUsed: serverTimestamp()
-                        });
-                    } else {
-                        // If not consented, show message that they need to consent on phone first
-                        document.getElementById('pairing-status').textContent = 'Please accept terms on your phone first';
-                        document.getElementById('pairing-status').style.color = '#ff9800';
-                        
-                        // Clean up pairing doc
-                        await deleteDoc(pairingRef);
-                        
-                        setTimeout(() => {
-                            showLogin();
-                        }, 3000);
-                    }
-                    
-                    // Clean up pairing doc after success
-                    await deleteDoc(pairingRef);
+                    // Clean up pairing doc after a delay
+                    setTimeout(async () => {
+                        try {
+                            await deleteDoc(pairingRef);
+                        } catch (e) {
+                            console.log('Error cleaning up pairing doc:', e);
+                        }
+                    }, 5000);
                 }
             });
             
