@@ -310,72 +310,71 @@
             }
         }
 
-        /* Smart watch and very small screens */
-        @media (max-width: 450px), (max-height: 450px) {
-            #qr-container, #consent-container { 
-                padding: 4px; 
-                border-radius: 6px;
-                gap: 4px;
-            }
-            #date-text { 
-                font-size: 8px; 
-            }
-            .google-btn { 
-                padding: 6px 12px; 
-                font-size: 11px; 
-                gap: 4px;
-            }
-            .google-btn img {
-                width: 12px;
-                height: 12px;
-            }
-            .logout-btn {
-                padding: 2px 6px;
-                font-size: 8px;
-                margin-top: 2px;
-            }
-            .consent-btn {
-                padding: 6px 12px;
-                font-size: 11px;
-            }
-            .cancel-btn {
-                padding: 4px 10px;
-                font-size: 10px;
-            }
-            #user-info {
-                margin-bottom: 4px;
-            }
-            #user-info h3 { 
-                font-size: 10px; 
-                margin-bottom: 1px;
-            }
-            #user-info p {
-                font-size: 8px;
-            }
-            #auth-container {
-                gap: 8px;
-            }
-            #loading {
-                font-size: 10px;
-            }
-            #consent-container h2 {
-                font-size: 12px;
-            }
-            #consent-container p {
-                font-size: 9px;
-            }
-            #qr-container img {
-                width: 60vmin;
-                height: 60vmin;
-                max-width: 180px;
-                max-height: 180px;
-            }
-            .delete-btn {
-                display: none;
-            }
-            #pairing-section {
-                display: none !important;
-            }
+        /* Smart watch styles - applied via JS when watch detected */
+        body.watch-mode #qr-container, 
+        body.watch-mode #consent-container { 
+            padding: 4px; 
+            border-radius: 6px;
+            gap: 4px;
+        }
+        body.watch-mode #date-text { 
+            font-size: 8px; 
+        }
+        body.watch-mode .google-btn { 
+            padding: 6px 12px; 
+            font-size: 11px; 
+            gap: 4px;
+        }
+        body.watch-mode .google-btn img {
+            width: 12px;
+            height: 12px;
+        }
+        body.watch-mode .logout-btn {
+            padding: 2px 6px !important;
+            font-size: 8px !important;
+            margin-top: 2px !important;
+        }
+        body.watch-mode .consent-btn {
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+        body.watch-mode .cancel-btn {
+            padding: 4px 10px;
+            font-size: 10px;
+        }
+        body.watch-mode #user-info {
+            margin-bottom: 4px;
+        }
+        body.watch-mode #user-info h3 { 
+            font-size: 10px; 
+            margin-bottom: 1px;
+        }
+        body.watch-mode #user-info p {
+            font-size: 8px;
+        }
+        body.watch-mode #auth-container {
+            gap: 8px;
+        }
+        body.watch-mode #loading {
+            font-size: 10px;
+        }
+        body.watch-mode #consent-container h2 {
+            font-size: 12px;
+        }
+        body.watch-mode #consent-container p {
+            font-size: 9px;
+        }
+        body.watch-mode #qr-container img {
+            width: 55vmin;
+            height: 55vmin;
+            max-width: 200px;
+            max-height: 200px;
+        }
+        body.watch-mode .delete-btn {
+            display: none !important;
+        }
+        body.watch-mode #pairing-section {
+            display: none !important;
         }
             #date-text { 
                 font-size: 9px; 
@@ -459,6 +458,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         console.log('🚀 Lunch Ticket v2.0 - Page loaded at:', new Date().toLocaleTimeString());
+        console.log('⌚ User Agent:', navigator.userAgent);
         
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { 
@@ -499,6 +499,12 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
         console.log('✅ Firebase initialized');
+        console.log('⌚ Watch detection:', isWatch() ? 'WATCH DETECTED' : 'Not a watch');
+        
+        // Apply watch class on load if needed
+        if (isWatch()) {
+            document.body.classList.add('watch-mode');
+        }
 
         // UI Elements
         const authContainer = document.getElementById('auth-container');
@@ -514,6 +520,15 @@
         let isProcessingRedirect = false;
         let pairingUnsubscribe = null;
         let currentPairingCode = null;
+
+        // Detect if device is a smartwatch
+        function isWatch() {
+            const ua = navigator.userAgent.toLowerCase();
+            // Check for watch-specific identifiers
+            return /wear os|wearos|tizen|watch|galaxy watch|apple watch|watchos/i.test(ua) || 
+                   // Also check for very small screens that are likely watches
+                   (window.innerWidth <= 450 && window.innerHeight <= 450 && /android/i.test(ua));
+        }
 
         // Handle redirect result on page load
         console.log('🔄 Checking for redirect result...');
@@ -595,13 +610,17 @@
                     return;
                 }
                 
-                // Check if on watch (small screen) and adjust UI
-                const isWatch = window.innerWidth <= 200 || window.innerHeight <= 200;
+                // Check if on watch and adjust UI
+                const watchMode = isWatch();
+                console.log('⌚ Watch mode:', watchMode);
+                
                 const pairingSection = document.getElementById('pairing-section');
                 const logoutBtn = qrContainer.querySelector('.logout-btn');
                 const deleteBtn = qrContainer.querySelector('.delete-btn');
                 
-                if (isWatch) {
+                if (watchMode) {
+                    // Add watch class to body for CSS
+                    document.body.classList.add('watch-mode');
                     // Hide pairing section on watch
                     if (pairingSection) pairingSection.style.display = 'none';
                     // Make buttons smaller on watch
@@ -612,6 +631,8 @@
                     }
                     if (deleteBtn) deleteBtn.style.display = 'none';
                 } else {
+                    // Remove watch class
+                    document.body.classList.remove('watch-mode');
                     // Show pairing section on desktop
                     if (pairingSection) pairingSection.style.display = 'block';
                     if (logoutBtn) {
