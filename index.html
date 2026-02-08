@@ -492,6 +492,41 @@
         let pairingUnsubscribe = null;
         let currentPairingCode = null;
 
+        // Check for saved watch session on load
+        function checkSavedSession() {
+            try {
+                const savedUser = localStorage.getItem('watchUser');
+                if (savedUser) {
+                    const userData = JSON.parse(savedUser);
+                    console.log('📱 Found saved session for:', userData.email);
+                    return userData;
+                }
+            } catch (e) {
+                console.log('No saved session');
+            }
+            return null;
+        }
+
+        // Save user session for watch
+        function saveWatchSession(userData) {
+            try {
+                localStorage.setItem('watchUser', JSON.stringify(userData));
+                console.log('💾 Session saved for:', userData.email);
+            } catch (e) {
+                console.error('Error saving session:', e);
+            }
+        }
+
+        // Clear saved session
+        function clearWatchSession() {
+            try {
+                localStorage.removeItem('watchUser');
+                console.log('🗑️ Session cleared');
+            } catch (e) {
+                console.error('Error clearing session:', e);
+            }
+        }
+
         // Detect if device is a smartwatch
         function isWatch() {
             const ua = navigator.userAgent.toLowerCase();
@@ -902,6 +937,15 @@
                         uid: data.userId
                     };
                     console.log('🎯 Calling showQR with:', mockUser);
+                    
+                    // Save session for future auto-login
+                    saveWatchSession({
+                        googleId: data.googleId,
+                        email: data.userEmail,
+                        displayName: data.userName,
+                        uid: data.userId
+                    });
+                    
                     showQR(mockUser);
                     console.log('✅ showQR called');
                     
@@ -984,6 +1028,15 @@
                         email: data.userEmail,
                         uid: data.userId
                     };
+                    
+                    // Save session for future auto-login
+                    saveWatchSession({
+                        googleId: data.googleId,
+                        email: data.userEmail,
+                        displayName: data.userName,
+                        uid: data.userId
+                    });
+                    
                     showQR(mockUser);
                     
                     // Clean up
@@ -1125,6 +1178,7 @@
                 await signOut(auth);
                 currentUser = null;
                 currentGoogleId = null;
+                clearWatchSession(); // Clear saved session
                 alert('Your data has been deleted. You have been signed out.');
                 showLogin();
             } catch (error) {
@@ -1139,6 +1193,7 @@
                 await signOut(auth);
                 currentUser = null;
                 currentGoogleId = null;
+                clearWatchSession(); // Clear saved session
                 showLogin();
             } catch (error) {
                 console.error('Sign out error:', error);
@@ -1174,7 +1229,20 @@
                 currentUser = null;
                 currentGoogleId = null;
                 console.log('🔄 Auth state changed: NOT LOGGED IN');
-                showLogin();
+                
+                // Check for saved watch session (auto-login for watches)
+                const savedSession = checkSavedSession();
+                if (savedSession) {
+                    console.log('📱 Auto-logging in from saved session');
+                    currentGoogleId = savedSession.googleId;
+                    showQR({
+                        displayName: savedSession.displayName,
+                        email: savedSession.email,
+                        uid: savedSession.uid
+                    });
+                } else {
+                    showLogin();
+                }
             }
         });
     </script>
