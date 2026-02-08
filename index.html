@@ -533,7 +533,6 @@
             loading.style.display = 'none';
             qrContainer.style.display = 'none';
             document.getElementById('pairing-container').style.display = 'none';
-            document.getElementById('pairing-entry-container').style.display = 'none';
             
             // Cancel any active pairing
             if (pairingUnsubscribe) {
@@ -811,7 +810,7 @@
             document.getElementById('pairing-entry-container').style.display = 'flex';
         }
 
-        // Handle pairing code submission (from phone)
+        // Handle pairing code submission (when already logged in)
         window.submitPairingCode = async function() {
             const codeInput = document.getElementById('pairing-code-input');
             const code = codeInput.value.trim();
@@ -821,8 +820,10 @@
                 return;
             }
             
-            loading.style.display = 'block';
-            document.getElementById('pairing-entry-container').style.display = 'none';
+            if (!currentUser) {
+                alert('Please sign in first before linking a watch');
+                return;
+            }
             
             try {
                 // Check if code exists
@@ -831,110 +832,41 @@
                 
                 if (!pairingDoc.exists()) {
                     alert('Invalid or expired code. Please check and try again.');
-                    loading.style.display = 'none';
-                    showPairingEntry();
+                    codeInput.value = '';
                     return;
                 }
                 
                 const pairingData = pairingDoc.data();
                 if (pairingData.status !== 'waiting') {
                     alert('This code has already been used.');
-                    loading.style.display = 'none';
-                    showPairingEntry();
+                    codeInput.value = '';
                     return;
                 }
                 
-                // Now sign in with Google
-                loading.style.display = 'block';
+                // Get Google ID
+                const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
+                const googleId = googleProvider?.uid || currentUser.uid;
                 
-                try {
-                    const result = await signInWithPopup(auth, provider);
-                    const user = result.user;
-                    
-                    // Get Google ID
-                    const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
-                    const googleId = googleProvider?.uid || user.uid;
-                    
-                    // Check consent
-                    const hasConsented = await checkConsent(user);
-                    
-                    if (!hasConsented) {
-                        // Show consent first
-                        currentUser = user;
-                        showConsent(user);
-                        
-                        // Store pairing code for after consent
-                        window.pendingPairingCode = code;
-                        return;
-                    }
-                    
-                    // Update pairing document with user info
-                    await updateDoc(pairingRef, {
-                        status: 'paired',
-                        userId: user.uid,
-                        userEmail: user.email,
-                        userName: user.displayName,
-                        googleId: googleId,
-                        pairedAt: serverTimestamp()
-                    });
-                    
-                    // Show success and QR
-                    currentGoogleId = googleId;
-                    await updateDoc(doc(db, 'user_consents', user.uid), {
-                        lastUsed: serverTimestamp()
-                    });
-                    showQR(user);
-                    
-                } catch (error) {
-                    console.error('Sign in error:', error);
-                    loading.style.display = 'none';
-                    showPairingEntry();
-                    alert('Sign in failed: ' + error.message);
-                }
+                // Update pairing document with user info
+                await updateDoc(pairingRef, {
+                    status: 'paired',
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    userName: currentUser.displayName,
+                    googleId: googleId,
+                    pairedAt: serverTimestamp()
+                });
+                
+                alert('Watch linked successfully!');
+                codeInput.value = '';
                 
             } catch (error) {
                 console.error('Pairing error:', error);
-                loading.style.display = 'none';
-                showPairingEntry();
-                alert('Error: ' + error.message);
+                alert('Error linking watch: ' + error.message);
             }
         };
 
-        // Modified consent handler to handle pending pairing
-        const originalAgreeConsent = window.agreeConsent;
-        window.agreeConsent = async function() {
-            if (!currentUser) return;
-            
-            loading.style.display = 'block';
-            consentContainer.style.display = 'none';
-            
-            const saved = await saveConsent(currentUser);
-            
-            if (saved) {
-                // Check if we have a pending pairing
-                if (window.pendingPairingCode) {
-                    const pairingRef = doc(db, 'pairing_codes', window.pendingPairingCode);
-                    const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
-                    const googleId = googleProvider?.uid || currentUser.uid;
-                    
-                    await updateDoc(pairingRef, {
-                        status: 'paired',
-                        userId: currentUser.uid,
-                        userEmail: currentUser.email,
-                        userName: currentUser.displayName,
-                        googleId: googleId,
-                        pairedAt: serverTimestamp()
-                    });
-                    
-                    window.pendingPairingCode = null;
-                }
-                
-                showQR(currentUser);
-            } else {
-                alert('Failed to save consent. Please try again.');
-                showConsent(currentUser);
-            }
-        };
+
 
         // Handle consent agreement
         window.agreeConsent = async function() {
@@ -1044,9 +976,6 @@
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
             Sign in with Google
         </button>
-        <button class="use-pairing-btn" onclick="showPairingEntry()">
-            I have a code (Sign in on phone)
-        </button>
         <button class="use-pairing-btn" onclick="showPairingCode()" id="watch-pair-btn">
             I'm on a watch (Get code)
         </button>
@@ -1056,19 +985,11 @@
     <div id="pairing-container">
         <div id="pairing-code-display" class="pairing-code">000000</div>
         <p id="pairing-instructions" class="pairing-instructions">
-            Go to lunchkod.web.app on your phone<br>
-            and enter this code to sign in
+            Sign in on your phone first,<br>
+            then enter this code on your QR page
         </p>
         <div id="pairing-status" class="pairing-status">Waiting for phone...</div>
         <button class="back-btn" onclick="cancelPairing()">Cancel</button>
-    </div>
-
-    <!-- Pairing Entry View (shown on phone) -->
-    <div id="pairing-entry-container" style="display: none; flex-direction: column; align-items: center; gap: 15px;">
-        <h3 style="color: white; margin: 0;">Enter Watch Code</h3>
-        <input type="text" id="pairing-code-input" class="pairing-input" placeholder="000000" maxlength="6" pattern="\d*">
-        <button class="pair-btn" onclick="submitPairingCode()">Connect & Sign In</button>
-        <button class="back-btn" onclick="showLogin()">Back</button>
     </div>
 
     <!-- Consent View -->
@@ -1086,6 +1007,11 @@
     <div id="qr-container">
         <img id="qr" src="" alt="QR Code" />
         <div id="date-display"></div>
+        <div id="pairing-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; width: 100%;">
+            <p style="color: #666; font-size: 12px; margin: 0 0 10px 0;">Connect a watch</p>
+            <input type="text" id="pairing-code-input" class="pairing-input" placeholder="000000" maxlength="6" pattern="\d*" style="width: 100px; font-size: 18px; padding: 8px;">
+            <button class="pair-btn" onclick="submitPairingCode()" style="padding: 8px 16px; font-size: 12px; margin-top: 5px;">Link Watch</button>
+        </div>
         <button class="logout-btn" onclick="signOutUser()">Sign Out</button>
         <button class="delete-btn" onclick="deleteMyData()">Delete My Data</button>
     </div>
