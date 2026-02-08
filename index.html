@@ -187,6 +187,94 @@
             font-size: 14px;
         }
 
+        #pairing-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            text-align: center;
+        }
+
+        .pairing-code {
+            background-color: white;
+            color: #333;
+            font-size: 48px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .pairing-instructions {
+            color: white;
+            font-size: 14px;
+            max-width: 80vw;
+            line-height: 1.4;
+        }
+
+        .pairing-status {
+            color: #4CAF50;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .pairing-input {
+            font-size: 24px;
+            letter-spacing: 4px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #ccc;
+            width: 150px;
+        }
+
+        .pair-btn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .pair-btn:hover {
+            background-color: #3367d6;
+        }
+
+        .use-pairing-btn {
+            background-color: transparent;
+            color: #4285f4;
+            border: 2px solid #4285f4;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .use-pairing-btn:hover {
+            background-color: rgba(66, 133, 244, 0.1);
+        }
+
+        .back-btn {
+            background-color: transparent;
+            color: #999;
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .back-btn:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
         /* Responsive design for small screens */
         @media (max-width: 300px) {
             #qr-container, #consent-container { 
@@ -318,6 +406,7 @@
             setDoc, 
             deleteDoc,
             updateDoc,
+            onSnapshot,
             serverTimestamp 
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -350,10 +439,25 @@
         
         let currentUser = null;
         let currentGoogleId = null;
+        let isProcessingRedirect = false;
+        let pairingUnsubscribe = null;
+        let currentPairingCode = null;
 
         // Handle redirect result on page load
         console.log('🔄 Checking for redirect result...');
+        isProcessingRedirect = true;
+        
+        // Safety timeout - if redirect processing takes too long, allow auth state to take over
+        setTimeout(() => {
+            if (isProcessingRedirect) {
+                console.log('⏰ Redirect processing timeout - allowing auth state listener to proceed');
+                isProcessingRedirect = false;
+            }
+        }, 5000);
+        
         getRedirectResult(auth).then(async (result) => {
+            console.log('📋 Redirect result received:', result ? 'Has user' : 'No user');
+            
             if (result && result.user) {
                 console.log('✅ Redirect result found:', result.user.email);
                 const hasConsented = await checkConsent(result.user);
@@ -367,10 +471,21 @@
                 } else {
                     showConsent(result.user);
                 }
+            } else {
+                console.log('ℹ️ No redirect result (normal if not coming from redirect)');
             }
+            isProcessingRedirect = false;
         }).catch((error) => {
             console.error('❌ Redirect error:', error);
-            alert('Sign in failed: ' + error.message);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            isProcessingRedirect = false;
+            
+            // Don't show alert for certain errors
+            if (error.code !== 'auth/null-user') {
+                alert('Sign in failed: ' + error.message);
+            }
+            showLogin();
         });
 
         // Generate QR code with user ID
@@ -417,7 +532,41 @@
             authContainer.style.display = 'flex';
             loading.style.display = 'none';
             qrContainer.style.display = 'none';
+            document.getElementById('pairing-container').style.display = 'none';
+            document.getElementById('pairing-entry-container').style.display = 'none';
+            
+            // Cancel any active pairing
+            if (pairingUnsubscribe) {
+                pairingUnsubscribe();
+                pairingUnsubscribe = null;
+            }
+            
+            // Show watch pairing button if on small screen
+            const isSmallScreen = window.innerWidth <= 500 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+            const watchBtn = document.getElementById('watch-pair-btn');
+            if (watchBtn) {
+                watchBtn.style.display = isSmallScreen ? 'block' : 'none';
+            }
         }
+
+        // Cancel pairing
+        window.cancelPairing = async function() {
+            if (currentPairingCode) {
+                try {
+                    await deleteDoc(doc(db, 'pairing_codes', currentPairingCode));
+                } catch (e) {
+                    console.log('Error deleting pairing code:', e);
+                }
+                currentPairingCode = null;
+            }
+            
+            if (pairingUnsubscribe) {
+                pairingUnsubscribe();
+                pairingUnsubscribe = null;
+            }
+            
+            showLogin();
+        };
 
         // Check if user has already consented
         async function checkConsent(user) {
@@ -539,6 +688,255 @@
             }
         }
 
+        // Generate random 6-digit pairing code
+        function generatePairingCode() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        // Show pairing code view (for watch) - make global
+        window.showPairingCode = async function() {
+            loading.style.display = 'none';
+            authContainer.style.display = 'none';
+            consentContainer.style.display = 'none';
+            qrContainer.style.display = 'none';
+            document.getElementById('pairing-container').style.display = 'flex';
+            
+            // Generate and display code
+            currentPairingCode = generatePairingCode();
+            document.getElementById('pairing-code-display').textContent = currentPairingCode;
+            
+            // Create pairing document in Firestore
+            const pairingRef = doc(db, 'pairing_codes', currentPairingCode);
+            await setDoc(pairingRef, {
+                code: currentPairingCode,
+                status: 'waiting',
+                createdAt: serverTimestamp(),
+                deviceInfo: navigator.userAgent
+            });
+            
+            console.log('🔑 Pairing code created:', currentPairingCode);
+            
+            // Listen for pairing completion
+            pairingUnsubscribe = onSnapshot(pairingRef, async (snapshot) => {
+                if (!snapshot.exists()) return;
+                
+                const data = snapshot.data();
+                console.log('📡 Pairing update:', data.status);
+                
+                if (data.status === 'paired' && data.userId) {
+                    // User has paired! Get their info
+                    console.log('✅ Device paired with user:', data.userEmail);
+                    
+                    // Clean up
+                    if (pairingUnsubscribe) {
+                        pairingUnsubscribe();
+                        pairingUnsubscribe = null;
+                    }
+                    
+                    // Store the paired user info temporarily
+                    const pairedUserInfo = {
+                        uid: data.userId,
+                        email: data.userEmail,
+                        displayName: data.userName,
+                        googleId: data.googleId
+                    };
+                    
+                    // Show paired message
+                    document.getElementById('pairing-code-display').style.display = 'none';
+                    document.getElementById('pairing-instructions').style.display = 'none';
+                    document.getElementById('pairing-status').textContent = 'Connected! Loading...';
+                    document.getElementById('pairing-status').style.color = '#4CAF50';
+                    
+                    // Check consent and show QR directly
+                    const hasConsented = await checkConsent(pairedUserInfo);
+                    
+                    if (hasConsented) {
+                        currentGoogleId = data.googleId;
+                        // Create a mock user object for display
+                        const mockUser = {
+                            displayName: data.userName,
+                            email: data.userEmail,
+                            uid: data.userId
+                        };
+                        showQR(mockUser);
+                        
+                        // Update last used
+                        await updateDoc(doc(db, 'user_consents', data.userId), {
+                            lastUsed: serverTimestamp()
+                        });
+                    } else {
+                        // If not consented, show message that they need to consent on phone first
+                        document.getElementById('pairing-status').textContent = 'Please accept terms on your phone first';
+                        document.getElementById('pairing-status').style.color = '#ff9800';
+                        
+                        // Clean up pairing doc
+                        await deleteDoc(pairingRef);
+                        
+                        setTimeout(() => {
+                            showLogin();
+                        }, 3000);
+                    }
+                    
+                    // Clean up pairing doc after success
+                    await deleteDoc(pairingRef);
+                }
+            });
+            
+            // Auto-expire after 5 minutes
+            setTimeout(async () => {
+                if (pairingUnsubscribe) {
+                    pairingUnsubscribe();
+                    pairingUnsubscribe = null;
+                    
+                    // Check if still waiting
+                    const currentDoc = await getDoc(pairingRef);
+                    if (currentDoc.exists() && currentDoc.data().status === 'waiting') {
+                        await deleteDoc(pairingRef);
+                        document.getElementById('pairing-status').textContent = 'Code expired. Please try again.';
+                        document.getElementById('pairing-status').style.color = '#f44336';
+                        
+                        setTimeout(() => {
+                            showLogin();
+                        }, 2000);
+                    }
+                }
+            }, 300000); // 5 minutes
+        }
+
+        // Show pairing entry view (for phone) - make global
+        window.showPairingEntry = function() {
+            loading.style.display = 'none';
+            authContainer.style.display = 'none';
+            consentContainer.style.display = 'none';
+            qrContainer.style.display = 'none';
+            document.getElementById('pairing-entry-container').style.display = 'flex';
+        }
+
+        // Handle pairing code submission (from phone)
+        window.submitPairingCode = async function() {
+            const codeInput = document.getElementById('pairing-code-input');
+            const code = codeInput.value.trim();
+            
+            if (code.length !== 6 || !/^\d+$/.test(code)) {
+                alert('Please enter a valid 6-digit code');
+                return;
+            }
+            
+            loading.style.display = 'block';
+            document.getElementById('pairing-entry-container').style.display = 'none';
+            
+            try {
+                // Check if code exists
+                const pairingRef = doc(db, 'pairing_codes', code);
+                const pairingDoc = await getDoc(pairingRef);
+                
+                if (!pairingDoc.exists()) {
+                    alert('Invalid or expired code. Please check and try again.');
+                    loading.style.display = 'none';
+                    showPairingEntry();
+                    return;
+                }
+                
+                const pairingData = pairingDoc.data();
+                if (pairingData.status !== 'waiting') {
+                    alert('This code has already been used.');
+                    loading.style.display = 'none';
+                    showPairingEntry();
+                    return;
+                }
+                
+                // Now sign in with Google
+                loading.style.display = 'block';
+                
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    const user = result.user;
+                    
+                    // Get Google ID
+                    const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
+                    const googleId = googleProvider?.uid || user.uid;
+                    
+                    // Check consent
+                    const hasConsented = await checkConsent(user);
+                    
+                    if (!hasConsented) {
+                        // Show consent first
+                        currentUser = user;
+                        showConsent(user);
+                        
+                        // Store pairing code for after consent
+                        window.pendingPairingCode = code;
+                        return;
+                    }
+                    
+                    // Update pairing document with user info
+                    await updateDoc(pairingRef, {
+                        status: 'paired',
+                        userId: user.uid,
+                        userEmail: user.email,
+                        userName: user.displayName,
+                        googleId: googleId,
+                        pairedAt: serverTimestamp()
+                    });
+                    
+                    // Show success and QR
+                    currentGoogleId = googleId;
+                    await updateDoc(doc(db, 'user_consents', user.uid), {
+                        lastUsed: serverTimestamp()
+                    });
+                    showQR(user);
+                    
+                } catch (error) {
+                    console.error('Sign in error:', error);
+                    loading.style.display = 'none';
+                    showPairingEntry();
+                    alert('Sign in failed: ' + error.message);
+                }
+                
+            } catch (error) {
+                console.error('Pairing error:', error);
+                loading.style.display = 'none';
+                showPairingEntry();
+                alert('Error: ' + error.message);
+            }
+        };
+
+        // Modified consent handler to handle pending pairing
+        const originalAgreeConsent = window.agreeConsent;
+        window.agreeConsent = async function() {
+            if (!currentUser) return;
+            
+            loading.style.display = 'block';
+            consentContainer.style.display = 'none';
+            
+            const saved = await saveConsent(currentUser);
+            
+            if (saved) {
+                // Check if we have a pending pairing
+                if (window.pendingPairingCode) {
+                    const pairingRef = doc(db, 'pairing_codes', window.pendingPairingCode);
+                    const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
+                    const googleId = googleProvider?.uid || currentUser.uid;
+                    
+                    await updateDoc(pairingRef, {
+                        status: 'paired',
+                        userId: currentUser.uid,
+                        userEmail: currentUser.email,
+                        userName: currentUser.displayName,
+                        googleId: googleId,
+                        pairedAt: serverTimestamp()
+                    });
+                    
+                    window.pendingPairingCode = null;
+                }
+                
+                showQR(currentUser);
+            } else {
+                alert('Failed to save consent. Please try again.');
+                showConsent(currentUser);
+            }
+        };
+
         // Handle consent agreement
         window.agreeConsent = async function() {
             if (!currentUser) return;
@@ -607,9 +1005,15 @@
         // Listen for auth state changes
         console.log('👂 Setting up auth state listener...');
         onAuthStateChanged(auth, async (user) => {
+            if (isProcessingRedirect) {
+                console.log('⏳ Auth state changed but redirect still processing, waiting...');
+                return;
+            }
+            
             if (user) {
                 currentUser = user;
                 console.log('🔄 Auth state changed: LOGGED IN as', user.email);
+                console.log('🔄 User UID:', user.uid);
                 
                 // Check if they've consented
                 const hasConsented = await checkConsent(user);
@@ -617,8 +1021,10 @@
                 if (hasConsented) {
                     const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
                     currentGoogleId = googleProvider?.uid || user.uid;
+                    console.log('✅ User has consented, showing QR');
                     showQR(user);
                 } else {
+                    console.log('⚠️ User has not consented, showing consent screen');
                     showConsent(user);
                 }
             } else {
@@ -639,6 +1045,31 @@
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
             Sign in with Google
         </button>
+        <button class="use-pairing-btn" onclick="showPairingEntry()">
+            Have a code from your watch?
+        </button>
+        <button class="use-pairing-btn" onclick="showPairingCode()" style="display: none;" id="watch-pair-btn">
+            Watch Login (Use Code)
+        </button>
+    </div>
+
+    <!-- Pairing Code View (shown on watch) -->
+    <div id="pairing-container">
+        <div id="pairing-code-display" class="pairing-code">000000</div>
+        <p id="pairing-instructions" class="pairing-instructions">
+            Go to lunchkod.web.app on your phone<br>
+            and enter this code to sign in
+        </p>
+        <div id="pairing-status" class="pairing-status">Waiting for phone...</div>
+        <button class="back-btn" onclick="cancelPairing()">Cancel</button>
+    </div>
+
+    <!-- Pairing Entry View (shown on phone) -->
+    <div id="pairing-entry-container" style="display: none; flex-direction: column; align-items: center; gap: 15px;">
+        <h3 style="color: white; margin: 0;">Enter Watch Code</h3>
+        <input type="text" id="pairing-code-input" class="pairing-input" placeholder="000000" maxlength="6" pattern="\d*">
+        <button class="pair-btn" onclick="submitPairingCode()">Connect & Sign In</button>
+        <button class="back-btn" onclick="showLogin()">Back</button>
     </div>
 
     <!-- Consent View -->
