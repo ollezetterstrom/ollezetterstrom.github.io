@@ -3,6 +3,7 @@
 <head>
     <title>Lunch Ticket</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         body { 
             background-color: #000000;
@@ -305,6 +306,7 @@
             GoogleAuthProvider, 
             signInWithPopup, 
             signInWithRedirect,
+            signInWithCredential,
             getRedirectResult,
             signOut,
             onAuthStateChanged 
@@ -451,13 +453,32 @@
             }
         }
 
-        // Google Sign In
-        window.signInWithGoogle = async function() {
+        // Google One Tap Sign In
+        window.signInWithGoogle = function() {
+            loading.style.display = 'block';
+            authContainer.style.display = 'none';
+            
+            // Initialize Google One Tap
+            google.accounts.id.initialize({
+                client_id: "198521085351-4h5d1idf6cp5u822bjve4n191cdd4gme.apps.googleusercontent.com",
+                callback: handleGoogleResponse,
+                auto_select: false,
+                cancel_on_tap_outside: false
+            });
+
+            // Display One Tap prompt
+            google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    console.log('One Tap not displayed, falling back to popup...');
+                    // Fallback to traditional popup method
+                    fallbackSignInWithGoogle();
+                }
+            });
+        };
+
+        // Fallback traditional sign in
+        async function fallbackSignInWithGoogle() {
             try {
-                loading.style.display = 'block';
-                authContainer.style.display = 'none';
-                
-                // Use redirect for mobile/small screens (Wear OS, etc.)
                 const isSmallScreen = window.innerWidth <= 500 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
                 
                 if (isSmallScreen) {
@@ -466,36 +487,57 @@
                 } else {
                     console.log('💻 Desktop detected, using signInWithPopup');
                     const result = await signInWithPopup(auth, provider);
-                    currentUser = result.user;
-                    
-                    console.log('Signed in:', currentUser.email);
-                    
-                    // Check if user has already consented
-                    const hasConsented = await checkConsent(currentUser);
-                    
-                    if (hasConsented) {
-                        // Get their Google ID and show QR
-                        const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
-                        currentGoogleId = googleProvider?.uid || currentUser.uid;
-                        
-                        // Update last used timestamp
-                        await updateDoc(doc(db, 'user_consents', currentUser.uid), {
-                            lastUsed: serverTimestamp()
-                        });
-                        
-                        showQR(currentUser);
-                    } else {
-                        // Show consent screen
-                        showConsent(currentUser);
-                    }
+                    await handleLoginSuccess(result.user);
                 }
-                
             } catch (error) {
                 console.error('Sign in error:', error);
                 showLogin();
                 alert('Sign in failed: ' + error.message);
             }
-        };
+        }
+
+        // Handle Google One Tap response
+        async function handleGoogleResponse(response) {
+            loading.style.display = 'block';
+            
+            try {
+                // Create Firebase credential from Google ID Token
+                const credential = GoogleAuthProvider.credential(response.credential);
+                const result = await signInWithCredential(auth, credential);
+                
+                console.log('✅ One Tap login successful:', result.user.email);
+                await handleLoginSuccess(result.user);
+            } catch (error) {
+                console.error('❌ Firebase Auth failed:', error);
+                loading.style.display = 'none';
+                showLogin();
+                alert('Sign in failed: ' + error.message);
+            }
+        }
+
+        // Common login success handler
+        async function handleLoginSuccess(user) {
+            currentUser = user;
+            
+            // Check if user has already consented
+            const hasConsented = await checkConsent(user);
+            
+            if (hasConsented) {
+                // Get their Google ID and show QR
+                const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
+                currentGoogleId = googleProvider?.uid || user.uid;
+                
+                // Update last used timestamp
+                await updateDoc(doc(db, 'user_consents', user.uid), {
+                    lastUsed: serverTimestamp()
+                });
+                
+                showQR(user);
+            } else {
+                // Show consent screen
+                showConsent(user);
+            }
+        }
 
         // Handle consent agreement
         window.agreeConsent = async function() {
