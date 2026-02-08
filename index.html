@@ -311,12 +311,72 @@
         }
 
         /* Smart watch and very small screens */
-        @media (max-width: 200px), (max-height: 200px) {
+        @media (max-width: 450px), (max-height: 450px) {
             #qr-container, #consent-container { 
                 padding: 4px; 
                 border-radius: 6px;
-                gap: 6px;
+                gap: 4px;
             }
+            #date-text { 
+                font-size: 8px; 
+            }
+            .google-btn { 
+                padding: 6px 12px; 
+                font-size: 11px; 
+                gap: 4px;
+            }
+            .google-btn img {
+                width: 12px;
+                height: 12px;
+            }
+            .logout-btn {
+                padding: 2px 6px;
+                font-size: 8px;
+                margin-top: 2px;
+            }
+            .consent-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+            .cancel-btn {
+                padding: 4px 10px;
+                font-size: 10px;
+            }
+            #user-info {
+                margin-bottom: 4px;
+            }
+            #user-info h3 { 
+                font-size: 10px; 
+                margin-bottom: 1px;
+            }
+            #user-info p {
+                font-size: 8px;
+            }
+            #auth-container {
+                gap: 8px;
+            }
+            #loading {
+                font-size: 10px;
+            }
+            #consent-container h2 {
+                font-size: 12px;
+            }
+            #consent-container p {
+                font-size: 9px;
+            }
+            #qr-container img {
+                width: 60vmin;
+                height: 60vmin;
+                max-width: 180px;
+                max-height: 180px;
+            }
+            .delete-btn {
+                display: none;
+            }
+            #pairing-section {
+                display: none !important;
+            }
+        }
             #date-text { 
                 font-size: 9px; 
             }
