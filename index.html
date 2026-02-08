@@ -364,6 +364,18 @@
             #consent-container p {
                 font-size: 10px;
             }
+            #qr-container img {
+                width: 65vmin;
+                height: 65vmin;
+                max-width: 120px;
+                max-height: 120px;
+            }
+            .delete-btn {
+                display: none;
+            }
+            #pairing-section {
+                display: none !important;
+            }
         }
 
         /* Landscape orientation on phones */
@@ -521,6 +533,33 @@
                     console.error('❌ No googleId set!');
                     document.getElementById('pairing-status').textContent = 'Error: No Google ID';
                     return;
+                }
+                
+                // Check if on watch (small screen) and adjust UI
+                const isWatch = window.innerWidth <= 200 || window.innerHeight <= 200;
+                const pairingSection = document.getElementById('pairing-section');
+                const logoutBtn = qrContainer.querySelector('.logout-btn');
+                const deleteBtn = qrContainer.querySelector('.delete-btn');
+                
+                if (isWatch) {
+                    // Hide pairing section on watch
+                    if (pairingSection) pairingSection.style.display = 'none';
+                    // Make buttons smaller on watch
+                    if (logoutBtn) {
+                        logoutBtn.style.padding = '2px 6px';
+                        logoutBtn.style.fontSize = '8px';
+                        logoutBtn.style.marginTop = '2px';
+                    }
+                    if (deleteBtn) deleteBtn.style.display = 'none';
+                } else {
+                    // Show pairing section on desktop
+                    if (pairingSection) pairingSection.style.display = 'block';
+                    if (logoutBtn) {
+                        logoutBtn.style.padding = '';
+                        logoutBtn.style.fontSize = '';
+                        logoutBtn.style.marginTop = '';
+                    }
+                    if (deleteBtn) deleteBtn.style.display = 'block';
                 }
                 
                 generateQR(currentGoogleId);
@@ -1086,7 +1125,7 @@
     <div id="qr-container">
         <img id="qr" src="" alt="QR Code" />
         <div id="date-display"></div>
-        <div id="pairing-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; width: 100%;">
+        <div id="pairing-section" class="pairing-section-desktop" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; width: 100%;">
             <p style="color: #666; font-size: 12px; margin: 0 0 10px 0;">Connect a watch</p>
             <input type="text" id="pairing-code-input" class="pairing-input" placeholder="000000" maxlength="6" pattern="\d*" style="width: 100px; font-size: 18px; padding: 8px;">
             <button class="pair-btn" onclick="submitPairingCode()" style="padding: 8px 16px; font-size: 12px; margin-top: 5px;">Link Watch</button>
