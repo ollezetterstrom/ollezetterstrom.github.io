@@ -5,7 +5,7 @@ import { runAnimeCutscene } from './cutscene.js';
 import { generateSmartHint } from './hint.js';
 import { SFX } from './audio.js';
 import { CONFIG } from './config.js';
-import { gameState, setExtractor, getGameState } from './state.js';
+import { gameState, setExtractor } from './state.js';
 
 let extractor = null;
 
@@ -19,168 +19,6 @@ const statusText = document.getElementById('status-text');
 const errorMsg = document.getElementById('error-msg');
 const historyLog = document.getElementById('history-log');
 
-// ==========================================
-// SMART INPUT FOCUS MANAGER
-// ==========================================
-class InputFocusManager {
-    constructor(inputElement) {
-        this.input = inputElement;
-        this.wasFocused = false;
-        this.focusRestoreScheduled = false;
-        this.ignoreNextBlur = false;
-        this.setupListeners();
-    }
-
-    setupListeners() {
-        this.input.addEventListener('focus', () => {
-            this.wasFocused = true;
-        });
-
-        this.input.addEventListener('blur', (e) => {
-            if (this.ignoreNextBlur) {
-                this.ignoreNextBlur = false;
-                return;
-            }
-            if (this.wasFocused && !this.focusRestoreScheduled && !gameState.gameWon) {
-                this.scheduleFocusRestore();
-            }
-        });
-
-        this.input.addEventListener('input', () => {
-            this.wasFocused = true;
-        });
-
-        canvasContainer.addEventListener('mousedown', (e) => {
-            if (this.input === document.activeElement && e.target !== this.input && e.target !== btnEl && e.target !== hintBtn) {
-                this.wasFocused = true;
-                this.ignoreNextBlur = true;
-            }
-        });
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === 'Tab') {
-                this.wasFocused = true;
-            }
-        });
-    }
-
-    scheduleFocusRestore() {
-        if (this.focusRestoreScheduled) return;
-        this.focusRestoreScheduled = true;
-
-        requestAnimationFrame(() => {
-            if (this.wasFocused && !gameState.gameWon && !this.input.disabled && document.activeElement !== this.input) {
-                this.input.focus();
-            }
-            this.focusRestoreScheduled = false;
-        });
-    }
-
-    keepFocus() {
-        this.wasFocused = true;
-    }
-}
-
-const inputFocusManager = new InputFocusManager(inputEl);
-
-canvasContainer.addEventListener('click', (e) => {
-    if (inputEl !== document.activeElement && inputEl.value.length > 0 && !gameState.gameWon) {
-        inputFocusManager.keepFocus();
-        inputEl.focus();
-    }
-});
-
-// ==========================================
-// SMART ZOOM HANDLER
-// ==========================================
-class SmartZoomHandler {
-    constructor(panzoomInstance, container) {
-        this.panzoom = panzoomInstance;
-        this.container = container;
-        this.scrollHistory = [];
-        this.historyMaxLength = 10;
-        this.pendingZoom = null;
-        this.rafId = null;
-        this.deviceType = 'mouse';
-        this.accumulatedDelta = 0;
-        this.setupWheelHandler();
-        this.detectDeviceType();
-    }
-
-    detectDeviceType() {
-        let samples = 0;
-        const testWheel = (e) => {
-            samples++;
-            if (samples >= 3) {
-                const avgDelta = this.scrollHistory.reduce((sum, s) => sum + Math.abs(s.delta), 0) / samples;
-                this.deviceType = avgDelta < 40 ? 'trackpad' : 'mouse';
-                this.scrollHistory = [];
-                this.container.removeEventListener('wheel', testWheel, { passive: true });
-            }
-        };
-        this.container.addEventListener('wheel', testWheel, { passive: true });
-        setTimeout(() => {
-            if (this.scrollHistory.length > 0) {
-                const avgDelta = this.scrollHistory.reduce((sum, s) => sum + Math.abs(s.delta), 0) / this.scrollHistory.length;
-                this.deviceType = avgDelta < 40 ? 'trackpad' : 'mouse';
-            }
-            this.scrollHistory = [];
-        }, 300);
-    }
-
-    analyzeScrollPattern(deltaY) {
-        this.scrollHistory.push({ delta: deltaY, time: performance.now() });
-        if (this.scrollHistory.length > this.historyMaxLength) {
-            this.scrollHistory.shift();
-        }
-
-        if (this.scrollHistory.length < 3) return this.deviceType;
-
-        const recent = this.scrollHistory.slice(-5);
-        const avgDelta = recent.reduce((sum, s) => sum + Math.abs(s.delta), 0) / recent.length;
-
-        if (avgDelta < 35) return 'trackpad';
-        if (avgDelta > 70) return 'mouse';
-
-        return this.deviceType;
-    }
-
-    calculateStep(deltaY, deviceType) {
-        const absDelta = Math.abs(deltaY);
-
-        if (deviceType === 'trackpad') {
-            this.accumulatedDelta += deltaY;
-            const sensitivity = CONFIG.ZOOM.TRACKPAD_SENSITIVITY;
-            const step = Math.abs(this.accumulatedDelta) * 0.001 * sensitivity;
-            return Math.min(step, CONFIG.ZOOM.BASE_STEP * 3);
-        }
-
-        const normalized = Math.min(absDelta / 100, 1);
-        return CONFIG.ZOOM.BASE_STEP * (0.5 + normalized);
-    }
-
-    setupWheelHandler() {
-        this.container.addEventListener('wheel', (e) => {
-            e.preventDefault();
-
-            const deviceType = this.analyzeScrollPattern(e.deltaY);
-            const step = this.calculateStep(e.deltaY, deviceType);
-
-            if (deviceType === 'trackpad') {
-                if (this.rafId) cancelAnimationFrame(this.rafId);
-
-                this.rafId = requestAnimationFrame(() => {
-                    this.panzoom.zoomWithWheel(e, { step: step });
-                    this.accumulatedDelta = 0;
-                    this.rafId = null;
-                });
-            } else {
-                this.panzoom.zoomWithWheel(e, { step: step });
-            }
-        }, { passive: false });
-    }
-}
-
 async function initGame() {
     try {
         Logger.info("Initializing Game Engine...");
@@ -188,13 +26,41 @@ async function initGame() {
         gameState.panzoomInstance = Panzoom(board, {
             maxScale: CONFIG.ZOOM.MAX_SCALE,
             minScale: CONFIG.ZOOM.MIN_SCALE,
-            step: CONFIG.ZOOM.BASE_STEP,
-            beforeMouseDown: (e) => {
-                return inputEl === document.activeElement;
-            }
+            step: 0.1,
+            contain: 'outside',
+            cursor: null
         });
 
-        const zoomHandler = new SmartZoomHandler(gameState.panzoomInstance, canvasContainer);
+        canvasContainer.addEventListener('mousedown', (e) => {
+            if (inputEl === document.activeElement && e.target !== inputEl && e.target !== btnEl && e.target !== hintBtn) {
+                e.stopPropagation();
+            }
+        }, true);
+
+        let zoomRaf = null;
+        canvasContainer.addEventListener('wheel', (e) => {
+            if (inputEl === document.activeElement) return;
+            e.preventDefault();
+
+            if (zoomRaf) cancelAnimationFrame(zoomRaf);
+            
+            zoomRaf = requestAnimationFrame(() => {
+                const delta = -e.deltaY;
+                const isTrackpad = Math.abs(e.deltaY) < 100 && Math.abs(e.deltaY) > 0;
+                const step = isTrackpad ? 0.03 : 0.15;
+                
+                const zoom = delta > 0 ? step : -step;
+                const currentScale = gameState.panzoomInstance.getScale();
+                const newScale = Math.min(Math.max(currentScale + zoom, CONFIG.ZOOM.MIN_SCALE), CONFIG.ZOOM.MAX_SCALE);
+                
+                const rect = canvasContainer.getBoundingClientRect();
+                const focalX = e.clientX - rect.left;
+                const focalY = e.clientY - rect.top;
+                
+                gameState.panzoomInstance.zoom(newScale, { focalX, focalY });
+                zoomRaf = null;
+            });
+        }, { passive: false });
 
         Logger.debug("Downloading/Loading AI Model...");
         extractor = await pipeline('feature-extraction', CONFIG.AI.MODEL);
@@ -217,6 +83,14 @@ async function initGame() {
         startNewRound();
 
         btnEl.addEventListener('click', () => processNewWord());
+        
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processNewWord();
+            }
+        });
+
         newGameBtn.addEventListener('click', startNewRound);
 
         setupCameraControls();
@@ -227,9 +101,6 @@ async function initGame() {
     }
 }
 
-// ==========================================
-// CAMERA & QoL CONTROLS
-// ==========================================
 function recenterCamera() {
     if (gameState.panzoomInstance) {
         gameState.panzoomInstance.zoom(1, { animate: true });
@@ -257,29 +128,28 @@ function setupCameraControls() {
             return;
         }
 
-        const panStep = CONFIG.ZOOM.PAN_STEP;
         const currentPan = gameState.panzoomInstance.getPan();
 
         switch (e.key) {
             case 'ArrowUp':
             case 'w':
             case 'W':
-                gameState.panzoomInstance.pan(currentPan.x, currentPan.y + panStep, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x, currentPan.y + 60, { animate: true });
                 break;
             case 'ArrowDown':
             case 's':
             case 'S':
-                gameState.panzoomInstance.pan(currentPan.x, currentPan.y - panStep, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x, currentPan.y - 60, { animate: true });
                 break;
             case 'ArrowLeft':
             case 'a':
             case 'A':
-                gameState.panzoomInstance.pan(currentPan.x + panStep, currentPan.y, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x + 60, currentPan.y, { animate: true });
                 break;
             case 'ArrowRight':
             case 'd':
             case 'D':
-                gameState.panzoomInstance.pan(currentPan.x - panStep, currentPan.y, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x - 60, currentPan.y, { animate: true });
                 break;
             case '=':
             case '+':
@@ -330,8 +200,7 @@ function startNewRound() {
     hintBtn.disabled = false;
     btnEl.innerText = "Add Word";
     inputEl.value = "";
-    inputFocusManager.keepFocus();
-    inputEl.focus();
+    requestAnimationFrame(() => inputEl.focus());
 }
 
 async function processNewWord(overrideWord = null) {
@@ -397,8 +266,11 @@ async function processNewWord(overrideWord = null) {
         }
 
         inputEl.value = "";
-        inputFocusManager.keepFocus();
-        inputEl.focus();
+        requestAnimationFrame(() => {
+            if (!gameState.gameWon && !inputEl.disabled) {
+                inputEl.focus();
+            }
+        });
 
     } catch (error) {
         Logger.error("Processing Engine error", error);
@@ -417,7 +289,6 @@ function checkWinCondition() {
     const startNode = coreNodes[0];
     const targetNode = coreNodes[1];
 
-    // Build Adjacency List
     const adjacency = new Map();
     nodes.forEach(n => adjacency.set(n, []));
     edges.forEach(e => {
@@ -425,7 +296,6 @@ function checkWinCondition() {
         adjacency.get(e.target).push(e.source);
     });
 
-    // BFS Queue but we track the Parent Map to remember the path!
     const visited = new Map();
     visited.set(startNode, null);
     const queue = [startNode];
@@ -450,14 +320,13 @@ function checkWinCondition() {
     }
 
     if (foundPath) {
-        // Reconstruct the winning path sequence
         const winningSequence = [];
         let curr = targetNode;
         while (curr !== null) {
             winningSequence.push(curr);
             curr = visited.get(curr);
         }
-        winningSequence.reverse(); // Flip it so it goes Start -> Target
+        winningSequence.reverse();
 
         triggerWin(winningSequence);
     }
@@ -477,8 +346,6 @@ function triggerWin(winningSequence) {
         runAnimeCutscene(winningSequence, gameState.panzoomInstance, canvasContainer);
     }, CONFIG.UI.WIN_ANIMATION_DELAY);
 }
-
-
 
 function addToLog(word, linkCount, bestScore, subText) {
     const log = document.getElementById('history-log');

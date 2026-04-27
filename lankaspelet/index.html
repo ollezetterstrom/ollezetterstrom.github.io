@@ -16,12 +16,12 @@
         <div class="brand">Linxicon</div>
         <div id="status-text">⏳ Loading AI Engine...</div>
 
-        <form id="word-entry-form" class="input-group" onsubmit="event.preventDefault();">
+        <div class="input-group">
             <label for="wordInput" class="sr-only">Enter a linking word</label>
-            <input type="text" id="wordInput" placeholder="Enter a linking word..." aria-disabled="true" disabled>
-            <button type="submit" id="addWordBtn" aria-label="Add word to board" disabled>Add Word</button>
-            <button type="button" id="hintBtn" aria-label="Get a hint" disabled style="background-color: var(--color-warning); margin-top: -4px;">💡 Get Hint</button>
-        </form>
+            <input type="text" id="wordInput" placeholder="Enter a linking word..." disabled>
+            <button id="addWordBtn" aria-label="Add word to board" disabled>Add Word</button>
+            <button id="hintBtn" aria-label="Get a hint" disabled style="background-color: var(--color-warning); margin-top: -4px;">💡 Get Hint</button>
+        </div>
         <div id="error-msg"></div>
 
         <div class="history-header">Connection Log</div>
