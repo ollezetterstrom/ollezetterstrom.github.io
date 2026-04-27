@@ -19,9 +19,10 @@ export const CONFIG = {
     ZOOM: {
         MAX_SCALE: 3.5,
         MIN_SCALE: 0.15,
-        STEP_MOUSE: 0.1,
-        STEP_TRACKPAD: 0.02,
-        PAN_STEP: 60
+        BASE_STEP: 0.05,
+        SMOOTHING_FACTOR: 0.15,
+        TRACKPAD_SENSITIVITY: 0.15,
+        MOUSE_WHEEL_MULTIPLIER: 0.6
     },
     UI: {
         SIDEBAR_WIDTH: 320,
