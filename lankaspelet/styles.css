@@ -1,0 +1,278 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #F9F9F9;
+    color: #333333;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#sidebar {
+    width: 320px;
+    background-color: #FFFFFF;
+    border-right: 1px solid #EAEAEA;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+    z-index: 10;
+}
+
+.brand {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0057FF;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.brand.win-text {
+    color: #D97706;
+}
+
+/* Gold on win */
+#status-text {
+    font-size: 12px;
+    color: #6B7280;
+    margin-bottom: 24px;
+    min-height: 36px;
+    line-height: 1.4;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+input {
+    padding: 12px 16px;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border 0.2s;
+}
+
+input:focus {
+    border-color: #0057FF;
+}
+
+input:disabled,
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+button {
+    background-color: #0057FF;
+    color: #FFFFFF;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+#error-msg {
+    color: #EF4444;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 20px;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+.history-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6B7280;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#history-log {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.log-item {
+    background: #F9F9F9;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #EAEAEA;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.log-main {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+}
+
+.log-sub {
+    font-size: 11px;
+    color: #6B7280;
+}
+
+.log-score {
+    color: #0057FF;
+}
+
+.log-isolated {
+    color: #9CA3AF;
+    font-style: italic;
+}
+
+/* Canvas & Panzoom */
+#canvas-container {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: #F9F9F9;
+    cursor: grab;
+}
+
+#canvas-container:active {
+    cursor: grabbing;
+}
+
+#board {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    transform-origin: 0 0;
+}
+
+.dots-bg {
+    position: absolute;
+    top: -10000px;
+    left: -10000px;
+    width: 20000px;
+    height: 20000px;
+    background-image: radial-gradient(#CBD5E1 1.5px, transparent 1.5px);
+    background-size: 30px 30px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+#lines-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Nodes */
+.node {
+    position: absolute;
+    background: #FFFFFF;
+    border: 2px solid #D1D5DB;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
+    user-select: none;
+}
+
+.node.active {
+    border-color: #0057FF;
+    color: #0057FF;
+    box-shadow: 0 0 10px rgba(0, 87, 255, 0.2);
+}
+
+.node.isolated {
+    border-color: #9CA3AF;
+    color: #6B7280;
+}
+
+/* Core Goal Nodes */
+.node.core {
+    background-color: #111827;
+    color: #FFFFFF;
+    border-color: #111827;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 12px 24px;
+    box-shadow: 0 4px 15px rgba(17, 24, 39, 0.3);
+    z-index: 3;
+}
+
+.node.core.active {
+    box-shadow: 0 0 0 4px rgba(0, 87, 255, 0.4), 0 4px 15px rgba(17, 24, 39, 0.3);
+    border-color: #0057FF;
+}
+
+/* Win State */
+.node.win-node {
+    background-color: #F59E0B;
+    color: white;
+    border-color: #F59E0B;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+}
+
+/* --- QoL Zoom Controls --- */
+#zoom-controls {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
+}
+
+#zoom-controls button {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+#zoom-controls button:hover {
+    background-color: #F9FAFB;
+    color: #0057FF;
+    border-color: #0057FF;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 87, 255, 0.1);
+}
+
+#zoom-controls button:active {
+    transform: translateY(0);
+}
