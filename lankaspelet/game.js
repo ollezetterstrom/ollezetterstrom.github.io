@@ -4,14 +4,10 @@ import { Logger } from './logger.js';
 import { runAnimeCutscene } from './cutscene.js';
 import { generateSmartHint } from './hint.js';
 import { SFX } from './audio.js';
+import { CONFIG } from './config.js';
+import { gameState, setExtractor, getGameState } from './state.js';
 
-const MINIMUM_SCORE = 42.0;
 let extractor = null;
-let validWordsSet = new Set();      // The massive dictionary for player inputs
-let targetWordsArray = [];          // The common 10k dictionary for target words
-let gameWon = false;
-let isHinting = false; // RESTORED
-let panzoomInstance = null;
 
 const canvasContainer = document.getElementById('canvas-container');
 const board = document.getElementById('board');
@@ -27,39 +23,45 @@ async function initGame() {
     try {
         Logger.info("Initializing Game Engine...");
 
-        // UPGRADED: Tweaked step for smoother wheel zooming
-        panzoomInstance = Panzoom(board, {
-            maxScale: 3.5,
-            minScale: 0.15,
-            step: 0.8
+        // UPGRADED: Professional trackpad-friendly zoom configuration
+        gameState.panzoomInstance = Panzoom(board, {
+            maxScale: CONFIG.ZOOM.MAX_SCALE,
+            minScale: CONFIG.ZOOM.MIN_SCALE,
+            step: CONFIG.ZOOM.STEP_MOUSE
         });
 
-        canvasContainer.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+        // Normalize trackpad scroll events
+        canvasContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const isTrackpad = Math.abs(e.deltaY) < 50;
+            const dynamicStep = isTrackpad ? CONFIG.ZOOM.STEP_TRACKPAD : CONFIG.ZOOM.STEP_MOUSE;
+            gameState.panzoomInstance.zoomWithWheel(e, { step: dynamicStep });
+        }, { passive: false });
 
         Logger.debug("Downloading/Loading AI Model...");
-        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+        extractor = await pipeline('feature-extraction', CONFIG.AI.MODEL);
+        setExtractor(extractor);
 
         Logger.debug("Fetching exhaustive dictionary...");
-        const fullResponse = await fetch('https://cdn.jsdelivr.net/gh/dwyl/english-words@master/words_alpha.txt');
+        const fullResponse = await fetch(CONFIG.DICTIONARY.FULL_URL);
         const fullText = await fullResponse.text();
         const fullDict = fullText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
-        validWordsSet = new Set(fullDict);
+        gameState.validWordsSet = new Set(fullDict);
 
         Logger.debug("Fetching 10k common words list...");
-        const commonResponse = await fetch('https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt');
+        const commonResponse = await fetch(CONFIG.DICTIONARY.COMMON_URL);
         const commonText = await commonResponse.text();
         const commonDict = commonText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
 
-        targetWordsArray = commonDict.filter(w => w.length >= 4 && w.length <= 8);
+        gameState.targetWordsArray = commonDict.filter(w => w.length >= CONFIG.DICTIONARY.MIN_WORD_LENGTH && w.length <= CONFIG.DICTIONARY.MAX_WORD_LENGTH);
 
         Logger.success("Engine Ready!");
         startNewRound();
 
-        inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') processNewWord(); });
         btnEl.addEventListener('click', () => processNewWord());
         newGameBtn.addEventListener('click', startNewRound);
 
-        setupCameraControls(); // INITIALIZE NEW CONTROLS
+        setupCameraControls();
 
     } catch (error) {
         Logger.error("Failed to load engine", error);
@@ -68,80 +70,69 @@ async function initGame() {
 }
 
 // ==========================================
-// NEW: CAMERA & QoL CONTROLS
+// CAMERA & QoL CONTROLS
 // ==========================================
 function recenterCamera() {
-    if (panzoomInstance) {
-        // Passing { animate: true } creates that satisfying glide effect
-        panzoomInstance.zoom(1, { animate: true });
-        panzoomInstance.pan(0, 0, { animate: true });
+    if (gameState.panzoomInstance) {
+        gameState.panzoomInstance.zoom(1, { animate: true });
+        gameState.panzoomInstance.pan(0, 0, { animate: true });
     }
 }
 
 function setupCameraControls() {
-    // 1. Hook up the UI buttons
-    document.getElementById('zoomInBtn').addEventListener('click', () => panzoomInstance.zoomIn({ animate: true }));
-    document.getElementById('zoomOutBtn').addEventListener('click', () => panzoomInstance.zoomOut({ animate: true }));
+    document.getElementById('zoomInBtn').addEventListener('click', () => gameState.panzoomInstance.zoomIn({ animate: true }));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => gameState.panzoomInstance.zoomOut({ animate: true }));
     document.getElementById('recenterBtn').addEventListener('click', recenterCamera);
 
-    // 2. Double click background to recenter
     canvasContainer.addEventListener('dblclick', (e) => {
-        // Only trigger if clicking the empty canvas, not a node
         if (e.target === canvasContainer || e.target === board || e.target.classList.contains('dots-bg')) {
             recenterCamera();
         }
     });
 
-    // 3. Global Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-        // Input Box QoL: Clear and unfocus if they hit Escape while typing
         if (document.activeElement === inputEl) {
             if (e.key === 'Escape') {
                 inputEl.value = '';
                 inputEl.blur();
             }
-            return; // Don't trigger camera controls while typing
+            return;
         }
 
-        const panStep = 60;
-        const currentPan = panzoomInstance.getPan();
+        const panStep = CONFIG.ZOOM.PAN_STEP;
+        const currentPan = gameState.panzoomInstance.getPan();
 
         switch (e.key) {
-            // Panning (WASD or Arrows)
             case 'ArrowUp':
             case 'w':
             case 'W':
-                panzoomInstance.pan(currentPan.x, currentPan.y + panStep, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x, currentPan.y + panStep, { animate: true });
                 break;
             case 'ArrowDown':
             case 's':
             case 'S':
-                panzoomInstance.pan(currentPan.x, currentPan.y - panStep, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x, currentPan.y - panStep, { animate: true });
                 break;
             case 'ArrowLeft':
             case 'a':
             case 'A':
-                panzoomInstance.pan(currentPan.x + panStep, currentPan.y, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x + panStep, currentPan.y, { animate: true });
                 break;
             case 'ArrowRight':
             case 'd':
             case 'D':
-                panzoomInstance.pan(currentPan.x - panStep, currentPan.y, { animate: true });
+                gameState.panzoomInstance.pan(currentPan.x - panStep, currentPan.y, { animate: true });
                 break;
-
-            // Zooming (+ / -)
             case '=':
             case '+':
-                panzoomInstance.zoomIn({ animate: true });
+                gameState.panzoomInstance.zoomIn({ animate: true });
                 break;
             case '-':
             case '_':
-                panzoomInstance.zoomOut({ animate: true });
+                gameState.panzoomInstance.zoomOut({ animate: true });
                 break;
-
-            // Recenter (Space)
             case ' ':
-                e.preventDefault(); // Stop space from scrolling the page
+                e.preventDefault();
                 recenterCamera();
                 break;
         }
@@ -152,49 +143,46 @@ function startNewRound() {
     Logger.divider();
     Logger.info("Starting New Round...");
 
-    // 1. Reset Game State
-    gameWon = false;
+    gameState.gameWon = false;
     clearPhysics();
     historyLog.innerHTML = "";
     errorMsg.innerText = "";
     document.querySelector('.brand').classList.remove('win-text');
 
-    // 2. Reset Camera to Center
-    if (panzoomInstance) {
-        panzoomInstance.zoom(1, { animate: true });
-        panzoomInstance.pan(0, 0, { animate: true });
+    if (gameState.panzoomInstance) {
+        gameState.panzoomInstance.zoom(1, { animate: true });
+        gameState.panzoomInstance.pan(0, 0, { animate: true });
     }
 
-    // 3. Pick New Target Words from the COMMON list
-    const word1 = targetWordsArray[Math.floor(Math.random() * targetWordsArray.length)];
-    let word2 = targetWordsArray[Math.floor(Math.random() * targetWordsArray.length)];
-    while (word1 === word2) word2 = targetWordsArray[Math.floor(Math.random() * targetWordsArray.length)];
+    const word1 = gameState.targetWordsArray[Math.floor(Math.random() * gameState.targetWordsArray.length)];
+    let word2 = gameState.targetWordsArray[Math.floor(Math.random() * gameState.targetWordsArray.length)];
+    while (word1 === word2) word2 = gameState.targetWordsArray[Math.floor(Math.random() * gameState.targetWordsArray.length)];
 
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
 
-    createNode(word1, cx - 120, cy, true);
-    createNode(word2, cx + 120, cy, true);
+    createNode(word1, cx - CONFIG.GAME.NODE_SPAWN_OFFSET_X, cy, true);
+    createNode(word2, cx + CONFIG.GAME.NODE_SPAWN_OFFSET_X, cy, true);
 
     Logger.success(`Target acquired: ${word1} -> ${word2}`);
     statusText.innerHTML = `✅ Ready!<br>Connect <b>${word1}</b> to <b>${word2}</b>.`;
 
     inputEl.disabled = false;
     btnEl.disabled = false;
-    hintBtn.disabled = false; // NEW
+    hintBtn.disabled = false;
     btnEl.innerText = "Add Word";
     inputEl.value = "";
     inputEl.focus();
 }
 
 async function processNewWord(overrideWord = null) {
-    if (gameWon) return;
+    if (gameState.gameWon) return;
 
     const rawInput = overrideWord ? overrideWord.trim().toLowerCase() : inputEl.value.trim().toLowerCase();
     errorMsg.innerText = "";
 
     if (!rawInput) return;
-    if (!validWordsSet.has(rawInput)) {
+    if (!gameState.validWordsSet.has(rawInput)) {
         Logger.warn(`Rejected: "${rawInput}" not in dictionary.`);
         SFX.playError();
         return errorMsg.innerText = `"${rawInput}" is not in the dictionary.`;
@@ -209,14 +197,14 @@ async function processNewWord(overrideWord = null) {
     Logger.info(`Evaluating word: "${rawInput}"`);
 
     try {
-        const inputEmbed = await extractor(rawInput, { pooling: 'mean', normalize: true });
+        const inputEmbed = await extractor(rawInput, { pooling: CONFIG.AI.POOLING_STRATEGY, normalize: true });
         let validConnections = [];
 
         for (let existingNode of nodes) {
-            const existingEmbed = await extractor(existingNode.word, { pooling: 'mean', normalize: true });
+            const existingEmbed = await extractor(existingNode.word, { pooling: CONFIG.AI.POOLING_STRATEGY, normalize: true });
             const score = cos_sim(inputEmbed.data, existingEmbed.data) * 100;
 
-            if (score >= MINIMUM_SCORE) {
+            if (score >= CONFIG.GAME.MINIMUM_SCORE) {
                 validConnections.push({ node: existingNode, score: score });
                 Logger.debug(`Link found: ${existingNode.word} (${score.toFixed(1)}%)`);
             }
@@ -256,7 +244,7 @@ async function processNewWord(overrideWord = null) {
         Logger.error("Processing Engine error", error);
         errorMsg.innerText = "Engine error.";
     } finally {
-        if (!gameWon) {
+        if (!gameState.gameWon) {
             inputEl.disabled = false; btnEl.disabled = false; btnEl.innerText = "Add Word";
         }
     }
@@ -316,7 +304,7 @@ function checkWinCondition() {
 }
 
 function triggerWin(winningSequence) {
-    gameWon = true;
+    gameState.gameWon = true;
     inputEl.disabled = true;
     btnEl.disabled = true;
     btnEl.innerText = "🎬 ANIMATING...";
@@ -325,11 +313,9 @@ function triggerWin(winningSequence) {
     document.querySelector('.brand').classList.add('win-text');
     SFX.playWin();
 
-    // Wait a brief second for the physics engine to settle the nodes
     setTimeout(() => {
-        // Pass our path, panzoom library, and canvas to the director
-        runAnimeCutscene(winningSequence, panzoomInstance, canvasContainer);
-    }, 1000);
+        runAnimeCutscene(winningSequence, gameState.panzoomInstance, canvasContainer);
+    }, CONFIG.UI.WIN_ANIMATION_DELAY);
 }
 
 
@@ -387,9 +373,9 @@ function getConnectedComponent(startNode) {
 window.addEventListener('DOMContentLoaded', initGame);
 
 hintBtn.addEventListener('click', async () => {
-    if (gameWon || isHinting) return;
+    if (gameState.gameWon || gameState.isHinting) return;
 
-    isHinting = true;
+    gameState.isHinting = true;
     hintBtn.disabled = true;
     hintBtn.innerText = "Calculating path... 0%";
     SFX.playHint();
@@ -401,7 +387,6 @@ hintBtn.addEventListener('click', async () => {
         const islandA = getConnectedComponent(coreNodes[0]);
         const islandB = getConnectedComponent(coreNodes[1]);
 
-        // Check if already connected
         if (islandA.includes(coreNodes[1])) {
             errorMsg.innerText = "The path is already clear! Check the connections.";
             return;
@@ -415,7 +400,7 @@ hintBtn.addEventListener('click', async () => {
             cos_sim,
             islandAWords,
             islandBWords,
-            targetWordsArray,
+            gameState.targetWordsArray,
             (progress) => {
                 const percent = Math.floor(progress * 100);
                 hintBtn.innerText = `Searching gap... ${percent}%`;
@@ -435,6 +420,6 @@ hintBtn.addEventListener('click', async () => {
     } finally {
         hintBtn.innerText = "💡 Get Hint";
         hintBtn.disabled = false;
-        isHinting = false;
+        gameState.isHinting = false;
     }
 });

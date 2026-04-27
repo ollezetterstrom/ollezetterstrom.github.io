@@ -12,24 +12,24 @@
 
 <body>
 
-    <div id="sidebar">
+    <aside id="sidebar">
         <div class="brand">Linxicon</div>
         <div id="status-text">⏳ Loading AI Engine...</div>
 
-        <div class="input-group">
-            <input type="text" id="wordInput" placeholder="Enter a linking word..." disabled>
-            <button id="addWordBtn" disabled>Add Word</button>
-            <button id="hintBtn" disabled style="background-color: #F59E0B; margin-top: -4px;">💡 Get Hint</button>
-        </div>
+        <form id="word-entry-form" class="input-group" onsubmit="event.preventDefault();">
+            <label for="wordInput" class="sr-only">Enter a linking word</label>
+            <input type="text" id="wordInput" placeholder="Enter a linking word..." aria-disabled="true" disabled>
+            <button type="submit" id="addWordBtn" aria-label="Add word to board" disabled>Add Word</button>
+            <button type="button" id="hintBtn" aria-label="Get a hint" disabled style="background-color: var(--color-warning); margin-top: -4px;">💡 Get Hint</button>
+        </form>
         <div id="error-msg"></div>
 
         <div class="history-header">Connection Log</div>
         <div id="history-log"></div>
 
-        <button id="newGameBtn" style="margin-top: 12px; background-color: #E5E7EB; color: #374151;">Restart
+        <button id="newGameBtn" aria-label="Restart game" style="margin-top: 12px; background-color: #E5E7EB; color: #374151;">Restart
             Game</button>
-    </div>
-    </div>
+    </aside>
 
     <div id="canvas-container">
         <div id="board">
