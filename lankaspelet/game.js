@@ -1,11 +1,13 @@
 import { pipeline, cos_sim } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-import { createNode, createEdge, nodes, edges, wakeSimulation, clearPhysics, getIdealSpawnPosition } from './physics.js';
+import { createNode, createEdge, nodes, edges, wakeSimulation, clearPhysics, getIdealSpawnPosition, syncWithState } from './physics.js';
 import { Logger } from './logger.js';
 import { runAnimeCutscene } from './cutscene.js';
 import { generateSmartHint } from './hint.js';
 import { SFX } from './audio.js';
 import { CONFIG } from './config.js';
 import { gameState, setExtractor } from './state.js';
+
+const { insertCoin, onPlayerJoin, isHost, myPlayer, setState, getState, onStateChange } = Playroom;
 
 let extractor = null;
 
@@ -23,12 +25,47 @@ async function initGame() {
     try {
         Logger.info("Initializing Game Engine...");
 
+        // 1. Initialize Multiplayer
+        await insertCoin({
+            gameId: "linxicon-multiplayer",
+            discord: true // Optional: allows playing inside Discord
+        });
+
         gameState.panzoomInstance = Panzoom(board, {
             maxScale: CONFIG.ZOOM.MAX_SCALE,
             minScale: CONFIG.ZOOM.MIN_SCALE,
             step: 0.1,
             contain: 'outside',
             cursor: null
+        });
+
+        // Setup UI for Multiplayer
+        onPlayerJoin((player) => {
+            Logger.info(`Player joined: ${player.getProfile().name}`);
+            if (isHost()) {
+                const players = getState("players") || [];
+                if (!players.find(p => p.id === player.id)) {
+                    setState("players", [...players, { id: player.id, name: player.getProfile().name }], true);
+                }
+            }
+        });
+
+        onStateChange(() => {
+            const stateNodes = getState("nodes") || [];
+            const stateEdges = getState("edges") || [];
+            syncWithState(stateNodes, stateEdges);
+            
+            const stateGameWon = getState("gameWon");
+            if (stateGameWon && !gameState.gameWon) {
+                gameState.gameWon = true;
+                const winningWords = getState("winningSequence");
+                if (winningWords) {
+                    const winningSequence = winningWords.map(w => nodes.find(n => n.word === w)).filter(n => !!n);
+                    triggerWin(winningSequence);
+                }
+            }
+
+            updateUIFromState();
         });
 
         canvasContainer.addEventListener('mousedown', (e) => {
@@ -80,7 +117,10 @@ async function initGame() {
         gameState.targetWordsArray = commonDict.filter(w => w.length >= CONFIG.DICTIONARY.MIN_WORD_LENGTH && w.length <= CONFIG.DICTIONARY.MAX_WORD_LENGTH);
 
         Logger.success("Engine Ready!");
-        startNewRound();
+
+        if (isHost()) {
+            startNewRound();
+        }
 
         btnEl.addEventListener('click', () => processNewWord());
         
@@ -91,13 +131,48 @@ async function initGame() {
             }
         });
 
-        newGameBtn.addEventListener('click', startNewRound);
+        newGameBtn.addEventListener('click', () => {
+            if (isHost()) startNewRound();
+            else Logger.warn("Only the host can restart the game.");
+        });
 
         setupCameraControls();
 
     } catch (error) {
         Logger.error("Failed to load engine", error);
         statusText.innerHTML = "❌ Error loading engine.";
+    }
+}
+
+function updateUIFromState() {
+    const players = getState("players") || [];
+    const turnIndex = getState("turnIndex") || 0;
+    const targetWords = getState("targetWords");
+    const gameWon = getState("gameWon");
+
+    if (!targetWords) return;
+
+    const currentPlayer = players[turnIndex];
+    const isMyTurn = currentPlayer && currentPlayer.id === myPlayer().id;
+
+    if (gameWon) {
+        statusText.innerHTML = `🏆 <b>CONNECTION ESTABLISHED!</b>`;
+        inputEl.disabled = true;
+        btnEl.disabled = true;
+        return;
+    }
+
+    if (isMyTurn) {
+        statusText.innerHTML = `🌟 <b>It's your turn!</b><br>Connect <b>${targetWords[0]}</b> to <b>${targetWords[1]}</b>.`;
+        inputEl.disabled = false;
+        btnEl.disabled = false;
+        btnEl.innerText = "Add Word";
+    } else {
+        const name = currentPlayer ? currentPlayer.name : "Waiting...";
+        statusText.innerHTML = `⏳ <b>${name}'s turn...</b><br>Target: <b>${targetWords[0]}</b> ↔ <b>${targetWords[1]}</b>.`;
+        inputEl.disabled = true;
+        btnEl.disabled = true;
+        btnEl.innerText = "Opponent Thinking...";
     }
 }
 
@@ -168,19 +243,15 @@ function setupCameraControls() {
 }
 
 function startNewRound() {
+    if (!isHost()) return;
+    
     Logger.divider();
     Logger.info("Starting New Round...");
 
-    gameState.gameWon = false;
     clearPhysics();
     historyLog.innerHTML = "";
     errorMsg.innerText = "";
     document.querySelector('.brand').classList.remove('win-text');
-
-    if (gameState.panzoomInstance) {
-        gameState.panzoomInstance.zoom(1, { animate: true });
-        gameState.panzoomInstance.pan(0, 0, { animate: true });
-    }
 
     const word1 = gameState.targetWordsArray[Math.floor(Math.random() * gameState.targetWordsArray.length)];
     let word2 = gameState.targetWordsArray[Math.floor(Math.random() * gameState.targetWordsArray.length)];
@@ -189,22 +260,34 @@ function startNewRound() {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
 
-    createNode(word1, cx - CONFIG.GAME.NODE_SPAWN_OFFSET_X, cy, true);
-    createNode(word2, cx + CONFIG.GAME.NODE_SPAWN_OFFSET_X, cy, true);
+    const initialNodes = [
+        { word: word1, x: cx - CONFIG.GAME.NODE_SPAWN_OFFSET_X, y: cy, isCore: true },
+        { word: word2, x: cx + CONFIG.GAME.NODE_SPAWN_OFFSET_X, y: cy, isCore: true }
+    ];
+
+    setState("nodes", initialNodes, true);
+    setState("edges", [], true);
+    setState("targetWords", [word1, word2], true);
+    setState("gameWon", false, true);
+    setState("winningSequence", null, true);
+    setState("turnIndex", 0, true);
 
     Logger.success(`Target acquired: ${word1} -> ${word2}`);
-    statusText.innerHTML = `✅ Ready!<br>Connect <b>${word1}</b> to <b>${word2}</b>.`;
-
-    inputEl.disabled = false;
-    btnEl.disabled = false;
-    hintBtn.disabled = false;
-    btnEl.innerText = "Add Word";
     inputEl.value = "";
     requestAnimationFrame(() => inputEl.focus());
 }
 
 async function processNewWord(overrideWord = null) {
-    if (gameState.gameWon) return;
+    const gameWon = getState("gameWon");
+    if (gameWon) return;
+
+    // Check turn
+    const players = getState("players") || [];
+    const turnIndex = getState("turnIndex") || 0;
+    if (players[turnIndex].id !== myPlayer().id) {
+        Logger.warn("It is not your turn!");
+        return;
+    }
 
     const rawInput = overrideWord ? overrideWord.trim().toLowerCase() : inputEl.value.trim().toLowerCase();
     errorMsg.innerText = "";
@@ -238,47 +321,52 @@ async function processNewWord(overrideWord = null) {
             }
         }
 
-        document.querySelectorAll('.node.active').forEach(el => el.classList.remove('active'));
-
         const spawnPos = getIdealSpawnPosition(validConnections.map(c => c.node));
-        const newNode = createNode(rawInput, spawnPos.x, spawnPos.y, false);
+        
+        // Push to Playroom State
+        const currentNodes = getState("nodes") || [];
+        const currentEdges = getState("edges") || [];
+        
+        const newNodeData = { word: rawInput, x: spawnPos.x, y: spawnPos.y, isCore: false };
+        const newEdgesData = validConnections.map(conn => ({
+            source: rawInput,
+            target: conn.node.word,
+            weight: conn.score
+        }));
+
+        setState("nodes", [...currentNodes, newNodeData], true);
+        setState("edges", [...currentEdges, ...newEdgesData], true);
+        
+        // Advance Turn
+        const nextTurnIndex = (turnIndex + 1) % players.length;
+        setState("turnIndex", nextTurnIndex, true);
+
         SFX.playSpawn();
-
         if (validConnections.length > 0) {
-            newNode.el.classList.remove('isolated');
             validConnections.sort((a, b) => b.score - a.score);
-
             let subText = [];
             for (let conn of validConnections) {
-                createEdge(newNode, conn.node, conn.score);
                 SFX.playLinked();
                 subText.push(`${conn.node.word} (${conn.score.toFixed(1)}%)`);
             }
             addToLog(rawInput, validConnections.length, validConnections[0].score.toFixed(1), subText.join(", "));
             Logger.success(`"${rawInput}" integrated. Links: ${validConnections.length}`);
 
+            // We check win condition locally, but only the player who completes it broadcasts the win
             checkWinCondition();
         } else {
-            newNode.el.classList.add('isolated');
             addToLog(rawInput, 0, "--", "Waiting for connections...");
             Logger.warn(`"${rawInput}" isolated. Score below threshold.`);
             SFX.playIsolated();
         }
 
         inputEl.value = "";
-        requestAnimationFrame(() => {
-            if (!gameState.gameWon && !inputEl.disabled) {
-                inputEl.focus();
-            }
-        });
 
     } catch (error) {
         Logger.error("Processing Engine error", error);
         errorMsg.innerText = "Engine error.";
     } finally {
-        if (!gameState.gameWon) {
-            inputEl.disabled = false; btnEl.disabled = false; btnEl.innerText = "Add Word";
-        }
+        updateUIFromState();
     }
 }
 
@@ -328,12 +416,14 @@ function checkWinCondition() {
         }
         winningSequence.reverse();
 
+        // Broadcast win
+        setState("winningSequence", winningSequence.map(n => n.word), true);
+        setState("gameWon", true, true);
         triggerWin(winningSequence);
     }
 }
 
 function triggerWin(winningSequence) {
-    gameState.gameWon = true;
     inputEl.disabled = true;
     btnEl.disabled = true;
     btnEl.innerText = "🎬 ANIMATING...";
@@ -400,7 +490,15 @@ function getConnectedComponent(startNode) {
 window.addEventListener('DOMContentLoaded', initGame);
 
 hintBtn.addEventListener('click', async () => {
-    if (gameState.gameWon || gameState.isHinting) return;
+    if (getState("gameWon") || gameState.isHinting) return;
+
+    // Hint is only allowed on your turn
+    const players = getState("players") || [];
+    const turnIndex = getState("turnIndex") || 0;
+    if (players[turnIndex].id !== myPlayer().id) {
+        Logger.warn("You can only get a hint on your turn.");
+        return;
+    }
 
     gameState.isHinting = true;
     hintBtn.disabled = true;

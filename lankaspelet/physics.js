@@ -4,6 +4,40 @@ export const nodes = [];
 export const edges = [];
 let isSimulating = false;
 
+export function findNodeByWord(word) {
+    return nodes.find(n => n.word === word);
+}
+
+export function syncWithState(stateNodes, stateEdges) {
+    // If state has fewer nodes than we do, it likely means a reset happened
+    if (stateNodes.length < nodes.length) {
+        clearPhysics();
+    }
+
+    // 1. Add missing nodes
+    for (const sNode of stateNodes) {
+        if (!findNodeByWord(sNode.word)) {
+            createNode(sNode.word, sNode.x, sNode.y, sNode.isCore);
+        }
+    }
+
+    // 2. Add missing edges
+    for (const sEdge of stateEdges) {
+        const sourceNode = findNodeByWord(sEdge.source);
+        const targetNode = findNodeByWord(sEdge.target);
+        
+        if (sourceNode && targetNode) {
+            const exists = edges.find(e => 
+                (e.source === sourceNode && e.target === targetNode) ||
+                (e.source === targetNode && e.target === sourceNode)
+            );
+            if (!exists) {
+                createEdge(sourceNode, targetNode, sEdge.weight);
+            }
+        }
+    }
+}
+
 const board = document.getElementById('board');
 const linesLayer = document.getElementById('lines-layer');
 
