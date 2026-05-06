@@ -5,12 +5,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Linxicon</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 </head>
 
 <body>
+    <!-- Lobby/Welcome Screen -->
+    <div id="lobby-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; color: white; font-family: 'Inter', sans-serif;">
+        <h1 style="font-size: 3rem; margin-bottom: 1rem;">Linxicon</h1>
+        <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9;">Multiplayer Word Connection Game</p>
+        
+        <div id="room-code-display" style="background: rgba(255,255,255,0.2); padding: 1.5rem 3rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center; backdrop-filter: blur(10px);">
+            <div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 0.5rem;">ROOM CODE</div>
+            <div id="room-code" style="font-size: 2.5rem; font-weight: 700; letter-spacing: 0.5rem;">------</div>
+        </div>
+        
+        <button id="copy-code-btn" style="background: rgba(255,255,255,0.3); color: white; border: 2px solid rgba(255,255,255,0.5); padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-bottom: 1rem; font-family: inherit; backdrop-filter: blur(10px);" onclick="copyRoomCode()">📋 Copy Room Code</button>
+        <button id="share-code-btn" style="background: rgba(255,255,255,0.3); color: white; border: 2px solid rgba(255,255,255,0.5); padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-bottom: 2rem; font-family: inherit; backdrop-filter: blur(10px); display: none;" onclick="shareRoomCode()">📤 Share Room Code</button>
+        
+        <div id="players-list" style="background: rgba(255,255,255,0.15); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; min-width: 300px; backdrop-filter: blur(10px);">
+            <div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 1rem; text-align: center;">PLAYERS IN LOBBY</div>
+            <div id="players-container" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+        </div>
+        
+        <button id="start-game-btn" style="background: #10b981; color: white; border: none; padding: 1rem 3rem; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; display: none;">🎮 Start Game</button>
+        
+        <div id="lobby-status" style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">Waiting for host to start the game...</div>
+    </div>
 
     <aside id="sidebar">
         <div class="brand">Linxicon</div>

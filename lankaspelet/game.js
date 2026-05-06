@@ -7,7 +7,7 @@ import { SFX } from './audio.js';
 import { CONFIG } from './config.js';
 import { gameState, setExtractor } from './state.js';
 
-const { insertCoin, onPlayerJoin, isHost, myPlayer, setState, getState } = Playroom;
+const { insertCoin, onPlayerJoin, isHost, myPlayer, setState, getState, getRoomCode, startMatchmaking } = Playroom;
 
 let extractor = null;
 
@@ -28,8 +28,95 @@ async function initGame() {
         // 1. Initialize Multiplayer
         await insertCoin({
             gameId: "linxicon-multiplayer",
-            discord: true // Optional: allows playing inside Discord
+            discord: true, // Optional: allows playing inside Discord
+            skipLobby: true // Skip default lobby, use custom one
         });
+
+        // 2. Show lobby with room code
+        const roomCode = getRoomCode();
+        const lobbyScreen = document.getElementById('lobby-screen');
+        const roomCodeEl = document.getElementById('room-code');
+        const playersContainer = document.getElementById('players-container');
+        const startBtn = document.getElementById('start-game-btn');
+        const lobbyStatus = document.getElementById('lobby-status');
+        
+        roomCodeEl.textContent = roomCode;
+        lobbyScreen.style.display = 'flex';
+
+        // Local array to track players in lobby
+        const lobbyPlayers = [];
+
+        // Update players list UI
+        const updatePlayersList = () => {
+            if (lobbyPlayers.length === 0) {
+                playersContainer.innerHTML = '<div style="text-align: center; opacity: 0.7;">No players yet. Share the room code!</div>';
+                return;
+            }
+            playersContainer.innerHTML = lobbyPlayers.map(p => 
+                `<div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 12px; height: 12px; background: ${p.color.hex}; border-radius: 50%;"></div>
+                    <span>${p.name}</span>
+                    ${p.id === myPlayer().id ? ' <span style="opacity: 0.6; font-size: 0.8rem;">(You)</span>' : ''}
+                </div>`
+            ).join('');
+        };
+
+        // Add current player to lobby
+        lobbyPlayers.push({
+            id: myPlayer().id,
+            name: myPlayer().getProfile().name,
+            color: myPlayer().getProfile().color
+        });
+        updatePlayersList();
+
+        // Setup UI for Multiplayer
+        onPlayerJoin((player) => {
+            Logger.info(`Player joined: ${player.getProfile().name}`);
+            
+            // Add to local lobby list
+            lobbyPlayers.push({
+                id: player.id,
+                name: player.getProfile().name,
+                color: player.getProfile().color
+            });
+            updatePlayersList();
+            
+            // Update state (for game logic)
+            if (isHost()) {
+                const players = getState("players") || [];
+                if (!players.find(p => p.id === player.id)) {
+                    setState("players", [...players, { id: player.id, name: player.getProfile().name }], true);
+                }
+            }
+        });
+
+        // Show start button only for host
+        if (isHost()) {
+            startBtn.style.display = 'block';
+            lobbyStatus.textContent = 'Click "Start Game" when ready!';
+        }
+
+        // Wait for host to start the game
+        await new Promise((resolve) => {
+            if (isHost()) {
+                startBtn.addEventListener('click', () => {
+                    lobbyScreen.style.display = 'none';
+                    resolve();
+                });
+            } else {
+                // Non-hosts wait for game state to be set
+                const checkInterval = setInterval(() => {
+                    const targetWords = getState("targetWords");
+                    if (targetWords) {
+                        clearInterval(checkInterval);
+                        lobbyScreen.style.display = 'none';
+                        resolve();
+                    }
+                }, 500);
+            }
+        });
+
+        updatePlayersList();
 
         gameState.panzoomInstance = Panzoom(board, {
             maxScale: CONFIG.ZOOM.MAX_SCALE,
@@ -37,17 +124,6 @@ async function initGame() {
             step: 0.1,
             contain: 'outside',
             cursor: null
-        });
-
-        // Setup UI for Multiplayer
-        onPlayerJoin((player) => {
-            Logger.info(`Player joined: ${player.getProfile().name}`);
-            if (isHost()) {
-                const players = getState("players") || [];
-                if (!players.find(p => p.id === player.id)) {
-                    setState("players", [...players, { id: player.id, name: player.getProfile().name }], true);
-                }
-            }
         });
 
         const handleStateChange = () => {
@@ -491,6 +567,42 @@ function getConnectedComponent(startNode) {
         }
     }
     return Array.from(visited);
+}
+
+window.copyRoomCode = function() {
+    const roomCode = document.getElementById('room-code').textContent;
+    navigator.clipboard.writeText(roomCode).then(() => {
+        const btn = document.getElementById('copy-code-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    });
+};
+
+window.shareRoomCode = function() {
+    const roomCode = document.getElementById('room-code').textContent;
+    const shareUrl = window.location.href.split('#')[0] + '#r=' + roomCode;
+    const shareText = `Join me in Linxicon! Room code: ${roomCode}\n${shareUrl}`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Linxicon - Join my game!',
+            text: `Join me in Linxicon! Room code: ${roomCode}`,
+            url: shareUrl
+        }).catch(err => console.log('Share cancelled'));
+    } else {
+        // Fallback to copy
+        navigator.clipboard.writeText(shareText).then(() => {
+            alert('Room code copied to clipboard!');
+        });
+    }
+};
+
+// Show share button if Web Share API is available
+if (navigator.share) {
+    document.getElementById('share-code-btn').style.display = 'block';
 }
 
 window.addEventListener('DOMContentLoaded', initGame);
