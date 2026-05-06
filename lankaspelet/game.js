@@ -7,7 +7,7 @@ import { SFX } from './audio.js';
 import { CONFIG } from './config.js';
 import { gameState, setExtractor } from './state.js';
 
-const { insertCoin, onPlayerJoin, isHost, myPlayer, setState, getState, onStateChange } = Playroom;
+const { insertCoin, onPlayerJoin, isHost, myPlayer, setState, getState } = Playroom;
 
 let extractor = null;
 
@@ -68,12 +68,11 @@ async function initGame() {
             updateUIFromState();
         };
 
-        // PlayroomKit onStateChange fires on any state change; handle relevant keys
-        onStateChange((key, value) => {
-            if (["nodes", "edges", "gameWon", "winningSequence", "turnIndex", "targetWords", "players"].includes(key)) {
-                handleStateChange();
-            }
-        });
+        // PlayroomKit JS API doesn't have onStateChange - use polling instead
+        // Poll for state changes every 100ms
+        gameState.statePollingInterval = setInterval(() => {
+            handleStateChange();
+        }, 100);
 
         canvasContainer.addEventListener('mousedown', (e) => {
             if (inputEl === document.activeElement && e.target !== inputEl && e.target !== btnEl && e.target !== hintBtn) {
