@@ -68,14 +68,12 @@ async function initGame() {
             updateUIFromState();
         };
 
-        // PlayroomKit requires onStateChange(key, callback) — one listener per state key
-        onStateChange("nodes", handleStateChange);
-        onStateChange("edges", handleStateChange);
-        onStateChange("gameWon", handleStateChange);
-        onStateChange("winningSequence", handleStateChange);
-        onStateChange("turnIndex", handleStateChange);
-        onStateChange("targetWords", handleStateChange);
-        onStateChange("players", handleStateChange);
+        // PlayroomKit onStateChange fires on any state change; handle relevant keys
+        onStateChange((key, value) => {
+            if (["nodes", "edges", "gameWon", "winningSequence", "turnIndex", "targetWords", "players"].includes(key)) {
+                handleStateChange();
+            }
+        });
 
         canvasContainer.addEventListener('mousedown', (e) => {
             if (inputEl === document.activeElement && e.target !== inputEl && e.target !== btnEl && e.target !== hintBtn) {
