@@ -30,12 +30,12 @@ const io = new Server(server, {
 
 const rooms = {};
 
-// ── Static files from public/
-app.use(express.static('public'));
+// ── Static files
+app.use(express.static(__dirname));
 
 app.get('/:roomCode', (req, res, next) => {
     if (/^[A-Za-z]{5}$/.test(req.params.roomCode)) {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        res.sendFile(path.join(__dirname, 'index.html'));
     } else {
         next();
     }
@@ -46,7 +46,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ── Helpers
