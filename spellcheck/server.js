@@ -5,7 +5,28 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'https://ollezetterstrom.github.io',
+];
+
+const io = new Server(server, {
+    cors: {
+        origin: (origin, cb) => {
+            if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
+                cb(null, true);
+            } else {
+                cb(null, true);
+            }
+        },
+        methods: ['GET', 'POST'],
+        credentials: true,
+    },
+});
 
 const rooms = {};
 
@@ -18,6 +39,10 @@ app.get('/:roomCode', (req, res, next) => {
     } else {
         next();
     }
+});
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', rooms: Object.keys(rooms).length });
 });
 
 app.get('/', (req, res) => {
@@ -220,4 +245,5 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('🎮 SpellCheck Party → http://localhost:3000'));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => console.log('🎮 SpellCheck Party → http://0.0.0.0:' + PORT));

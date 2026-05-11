@@ -1,17 +1,11 @@
-const socket = io();
+const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://ollezetterstrom-github-io.onrender.com';
+const socket = io(SERVER_URL);
 let currentRoom = '';
 let isUserHost = false;
 let countdownInterval = null;
 let winScoreGoal = 100;
-
-(function checkUrlForRoom() {
-    const path = window.location.pathname.replace('/', '').toUpperCase();
-    if (/^[A-Z]{5}$/.test(path)) {
-        document.getElementById('roomCodeInput').value = path;
-        document.getElementById('createCard').style.display = 'none';
-        document.getElementById('homeDivider').style.display = 'none';
-    }
-})();
 
 function showError(msg) {
     const box = document.getElementById('errorBox');
@@ -45,11 +39,12 @@ function getUsername() {
 }
 
 function exitToHome() {
-    window.location.href = '/';
+    window.location.reload();
 }
 
 function copyRoomUrl() {
-    navigator.clipboard.writeText(window.location.href).catch(() => { });
+    const text = currentRoom || document.getElementById('roomCodeDisplay').textContent;
+    navigator.clipboard.writeText(text).catch(() => { });
     const c = document.getElementById('copyConfirm');
     if (c) { c.style.display = 'inline'; setTimeout(() => c.style.display = 'none', 2000); }
 }
@@ -69,9 +64,8 @@ socket.on('errorMsg', showError);
 socket.on('roomJoined', ({ roomId, isHost, settings }) => {
     currentRoom = roomId;
     isUserHost = isHost;
-    window.history.pushState({}, '', '/' + roomId);
     document.getElementById('roomCodeDisplay').textContent = roomId;
-    document.getElementById('roomUrlDisplay').textContent = window.location.host + '/' + roomId;
+    document.getElementById('roomUrlDisplay').textContent = roomId;
     document.getElementById('topbarRoomCode').textContent = roomId;
 
     // Populate Settings dock
