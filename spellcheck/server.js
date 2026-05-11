@@ -30,8 +30,16 @@ const io = new Server(server, {
 
 const rooms = {};
 
-// ── Static files
-app.use(express.static(__dirname));
+// ── Static files (only serve what's needed, don't expose everything)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+app.get('/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+app.get('/app.js', (req, res) => {
+    res.sendFile(path.join(__dirname, 'app.js'));
+});
 
 app.get('/:roomCode', (req, res, next) => {
     if (/^[A-Za-z]{5}$/.test(req.params.roomCode)) {
@@ -43,10 +51,6 @@ app.get('/:roomCode', (req, res, next) => {
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', rooms: Object.keys(rooms).length });
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ── Helpers
