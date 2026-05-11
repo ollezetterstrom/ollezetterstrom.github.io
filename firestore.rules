@@ -17,11 +17,30 @@ service cloud.firestore {
       allow delete: if true;
     }
     
-    // Users can only access their own consent document
-    match /user_consents/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Admin can read and delete any document
-      allow read, delete: if request.auth != null && request.auth.token.email == "olle.zetterstrom@student.tabyenskilda.se";
+    // SpellCheck Party — allow anyone to create and read rooms, host controls updates
+    match /rooms/{roomId} {
+      allow create: if true;
+      allow read: if true;
+      allow update: if request.resource.data.diff() == {field: 'state'} ||
+                       request.resource.data.diff() == {field: 'currentWord'} ||
+                       request.resource.data.diff() == {field: 'roundStartTime'} ||
+                       request.resource.data.diff() == {field: 'difficulty'} ||
+                       request.resource.data.diff() == {field: 'winScore'} ||
+                       request.resource.data.diff() == {field: 'roundDelay'} ||
+                       request.resource.data.diff().size() > 0;
+      allow delete: if true;
+
+      match /players/{playerId} {
+        allow read: if true;
+        allow write: if true;
+        allow delete: if true;
+      }
+      match /answers/{docId} {
+        allow read, write: if true;
+      }
+      match /results/{docId} {
+        allow read, write: if true;
+      }
     }
   }
 }

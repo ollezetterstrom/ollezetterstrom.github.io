@@ -1102,8 +1102,612 @@
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" crossorigin="anonymous"></script>
-    <script src="app.js"></script>
-</body>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, deleteDoc, serverTimestamp, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
+        const firebaseConfig = {
+            apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
+            authDomain: "lunchkod1239123.firebaseapp.com",
+            projectId: "lunchkod1239123",
+            storageBucket: "lunchkod1239123.firebasestorage.app",
+            messagingSenderId: "198521085351",
+            appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ── App Logic ──────────────────────────────────────────────────
+        const FALLBACK_WORDS = ['developer','umbrella','calendar','mystery','champion','alchemy','fragment','whisper','jealous','cinnamon'];
+        const ROUND_DURATION = 7;
+
+        let clientId = localStorage.getItem('spellcheck_clientId') || 'c' + Math.random().toString(36).slice(2, 9);
+        localStorage.setItem('spellcheck_clientId', clientId);
+
+        let currentRoom = null;
+        let isHost = false;
+        let unsubRoom = null;
+        let unsubPlayers = null;
+        let unsubAnswers = null;
+        let roundTimer = null;
+        let countdownInterval = null;
+        let winScoreGoal = 100;
+        let roomData = null;
+        let hasSubmitted = false;
+        let currentWord = '';
+
+        // ── Utility ──────────────────────────────────────────────────────
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let code = '';
+            for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+            return code;
+        }
+
+        function getEditDistance(a, b) {
+            if (!a.length) return b.length;
+            if (!b.length) return a.length;
+            const m = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(0));
+            for (let i = 0; i <= a.length; i++) m[0][i] = i;
+            for (let j = 0; j <= b.length; j++) m[j][0] = j;
+            for (let j = 1; j <= b.length; j++)
+                for (let i = 1; i <= a.length; i++)
+                    m[j][i] = Math.min(m[j][i-1]+1, m[j-1][i]+1, m[j-1][i-1] + (a[i-1]===b[j-1]?0:1));
+            return m[b.length][a.length];
+        }
+
+        function getUsername() {
+            return (document.getElementById('username').value.trim()) || 'Player' + Math.floor(Math.random() * 1000);
+        }
+
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.textContent = msg;
+            box.classList.add('visible');
+            setTimeout(() => box.classList.remove('visible'), 4000);
+        }
+
+        function showScreen(id) {
+            const isFullPage = id === 'game-screen' || id === 'gameover-screen';
+            document.getElementById('mainHeader').style.display = isFullPage ? 'none' : 'flex';
+            document.getElementById('pageWrap').style.display = isFullPage ? 'none' : 'flex';
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            if (isFullPage) {
+                document.getElementById('game-screen').style.display = id === 'game-screen' ? 'flex' : 'none';
+                document.getElementById('gameover-screen').style.display = id === 'gameover-screen' ? 'flex' : 'none';
+            } else {
+                document.getElementById('game-screen').style.display = 'none';
+                document.getElementById('gameover-screen').style.display = 'none';
+                const el = document.getElementById(id);
+                if (el) el.classList.add('active');
+            }
+            document.getElementById('errorBox').classList.remove('visible');
+        }
+
+        function copyRoomUrl() {
+            const text = currentRoom || document.getElementById('roomCodeDisplay').textContent;
+            navigator.clipboard.writeText(text).catch(() => {});
+            const c = document.getElementById('copyConfirm');
+            if (c) { c.style.display = 'inline'; setTimeout(() => c.style.display = 'none', 2000); }
+        }
+
+        function exitToHome() {
+            cleanup();
+            showScreen('home-screen');
+        }
+
+        function cleanup() {
+            if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+            if (unsubPlayers) { unsubPlayers(); unsubPlayers = null; }
+            if (unsubAnswers) { unsubAnswers(); unsubAnswers = null; }
+            if (roundTimer) { clearTimeout(roundTimer); roundTimer = null; }
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        }
+
+        // ── Room helpers ────────────────────────────────────────────────
+        async function createRoom() {
+            const username = getUsername();
+            const difficulty = parseInt(document.getElementById('diff').value);
+            const roomId = generateRoomCode();
+            currentRoom = roomId;
+            isHost = true;
+
+            await setDoc(doc(db, 'rooms', roomId), {
+                hostId: clientId,
+                state: 'lobby',
+                currentWord: '',
+                roundStartTime: 0,
+                difficulty,
+                winScore: 100,
+                roundDelay: 6,
+                createdAt: serverTimestamp()
+            });
+            await setDoc(doc(db, 'rooms', roomId, 'players', clientId), {
+                username, score: 0, joinedAt: serverTimestamp()
+            });
+            enterRoom(roomId);
+        }
+
+        async function joinRoom() {
+            const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+            if (code.length !== 5) { showError('Room code must be 5 letters.'); return; }
+            const roomRef = doc(db, 'rooms', code);
+            const snap = await getDoc(roomRef);
+            if (!snap.exists()) { showError('Room not found!'); return; }
+            const username = getUsername();
+            currentRoom = code;
+            await setDoc(doc(db, 'rooms', code, 'players', clientId), {
+                username, score: 0, joinedAt: serverTimestamp()
+            }, { merge: true });
+            enterRoom(code);
+        }
+
+        function enterRoom(roomId) {
+            document.getElementById('roomCodeDisplay').textContent = roomId;
+            document.getElementById('roomUrlDisplay').textContent = roomId;
+            document.getElementById('topbarRoomCode').textContent = roomId;
+
+            const controls = ['setDiff', 'setWinScore', 'setRoundDelay'];
+            controls.forEach(id => document.getElementById(id).disabled = !isHost);
+            document.getElementById('startBtn').style.display = isHost ? 'flex' : 'none';
+            document.getElementById('waitingMsg').style.display = isHost ? 'none' : 'block';
+
+            showScreen('lobby-screen');
+
+            unsubRoom = onSnapshot(doc(db, 'rooms', roomId), (snap) => {
+                if (!snap.exists()) return;
+                const data = snap.data();
+                roomData = data;
+                applySettings(data);
+                handleRoomState(data);
+            });
+
+            unsubPlayers = onSnapshot(doc(db, 'rooms', roomId, 'players', 'all'), (snap) => {
+                if (!snap.exists()) return;
+                const players = Object.values(snap.data());
+                buildLobbyList(players);
+                buildSidebar(players);
+            });
+
+            // Fallback: poll players collection directly if 'all' doc not created yet
+            if (!unsubPlayers) {
+                const pollPlayers = setInterval(async () => {
+                    try {
+                        const ps = await getDoc(doc(db, 'rooms', roomId, 'players', clientId));
+                    } catch (e) { /* ignore */ }
+                }, 2000);
+                setTimeout(() => clearInterval(pollPlayers), 10000);
+            }
+        }
+
+        function handleRoomState(data) {
+            if (data.state === 'lobby') {
+                if (document.getElementById('game-screen').style.display === 'flex' ||
+                    document.getElementById('gameover-screen').style.display === 'flex') {
+                    cleanup();
+                    showScreen('lobby-screen');
+                }
+            } else if (data.state === 'playing') {
+                startRound(data.currentWord, data.roundStartTime);
+            } else if (data.state === 'roundOver') {
+                endRound(data);
+            } else if (data.state === 'gameOver') {
+                cleanup();
+                showGameOver(data.winner);
+            }
+        }
+
+        // ── Settings ────────────────────────────────────────────────────
+        function applySettings(data) {
+            winScoreGoal = data.winScore || 100;
+            document.getElementById('setDiff').value = data.difficulty || 2;
+            document.getElementById('setWinScore').value = data.winScore || 100;
+            document.getElementById('setRoundDelay').value = data.roundDelay || 6;
+            document.getElementById('topbarGoalText').textContent = `First to ${winScoreGoal} pts wins 🏁`;
+            document.getElementById('gameoverSubText').textContent = `reached ${winScoreGoal} points first`;
+        }
+
+        async function emitSettings() {
+            if (!isHost || !currentRoom) return;
+            await updateDoc(doc(db, 'rooms', currentRoom), {
+                difficulty: parseInt(document.getElementById('setDiff').value),
+                winScore: parseInt(document.getElementById('setWinScore').value),
+                roundDelay: parseInt(document.getElementById('setRoundDelay').value)
+            });
+        }
+
+        // ── Start Round ────────────────────────────────────────────────
+        async function startRound(word, roundStartTime) {
+            hasSubmitted = false;
+            currentWord = word;
+
+            document.getElementById('results-board').innerHTML = '';
+            document.getElementById('countdownWrap').classList.remove('visible');
+            document.getElementById('listenBanner').style.display = 'block';
+            document.getElementById('topbarTargetWrap').style.display = 'none';
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+            const timerEl = document.getElementById('timerDisplay');
+            timerEl.textContent = '🔊'; timerEl.classList.remove('urgent');
+            document.getElementById('timerLabel').textContent = 'listen carefully';
+
+            const ansInput = document.getElementById('answerInput');
+            const submitBtn = document.getElementById('submitBtn');
+            ansInput.disabled = false; ansInput.value = '';
+            submitBtn.disabled = false; submitBtn.textContent = 'Submit'; submitBtn.style.background = '';
+
+            showScreen('game-screen');
+            setTimeout(() => ansInput.focus(), 150);
+
+            // Text-to-speech
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.rate = 0.85;
+            window.speechSynthesis.speak(utterance);
+
+            // Timer countdown
+            const startMs = roundStartTime?.toMillis ? roundStartTime.toMillis() : roundStartTime;
+            const elapsed = (Date.now() - startMs) / 1000;
+            let timeLeft = Math.max(0, Math.ceil(ROUND_DURATION - elapsed));
+
+            const updateTimer = () => {
+                const el = document.getElementById('timerDisplay');
+                el.textContent = timeLeft;
+                document.getElementById('timerLabel').textContent = timeLeft <= 0 ? 'time\'s up!' : 'seconds left';
+                document.getElementById('listenBanner').style.display = timeLeft <= 3 ? 'none' : 'block';
+                if (timeLeft <= 3) el.classList.add('urgent');
+                else el.classList.remove('urgent');
+            };
+
+            updateTimer();
+            if (roundTimer) clearInterval(roundTimer);
+            roundTimer = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    clearInterval(roundTimer);
+                    roundTimer = null;
+                }
+            }, 1000);
+        }
+
+        async function endRound(data) {
+            const targetWord = data.currentWord || currentWord;
+            if (roundTimer) { clearInterval(roundTimer); roundTimer = null; }
+
+            const timerEl = document.getElementById('timerDisplay');
+            timerEl.textContent = '✅'; timerEl.classList.remove('urgent');
+            document.getElementById('timerLabel').textContent = 'Round Over!';
+            document.getElementById('answerInput').disabled = true;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('topbarTargetWrap').style.display = 'flex';
+            document.getElementById('topbarTargetWord').textContent = targetWord.charAt(0).toUpperCase() + targetWord.slice(1);
+
+            // Score answers
+            const resultSnap = await getDoc(doc(db, 'rooms', currentRoom, 'results', 'latest'));
+            if (resultSnap.exists()) {
+                buildResults(resultSnap.data().results);
+            }
+        }
+
+        async function submitAnswer() {
+            if (hasSubmitted || !currentRoom) return;
+            hasSubmitted = true;
+            const text = document.getElementById('answerInput').value;
+            document.getElementById('answerInput').disabled = true;
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true; btn.textContent = '✓ Submitted!'; btn.style.background = '#16a34a';
+
+            const startMs = roomData?.roundStartTime?.toMillis ? roomData.roundStartTime.toMillis() : roomData?.roundStartTime;
+            const timeTaken = startMs ? ((Date.now() - startMs) / 1000).toFixed(1) : ROUND_DURATION.toFixed(1);
+
+            await setDoc(doc(db, 'rooms', currentRoom, 'answers', clientId), {
+                text: text.toLowerCase().trim(),
+                timeTaken: parseFloat(timeTaken)
+            });
+        }
+
+        function buildResults(results) {
+            let html = '';
+            results.forEach((r, i) => {
+                const initial = r.username.charAt(0).toUpperCase();
+                const displayGuess = r.answer === '' ? '(No Answer)' : r.answer.charAt(0).toUpperCase() + r.answer.slice(1);
+                const badge = r.status === 'perfect' ? `✓ ${r.timeTaken}s` : r.status === 'close' ? `≈ ${r.timeTaken}s` : '✗';
+                html += `
+<div class="reveal-pill pill-${r.status}" style="animation-delay:${i * 0.07}s">
+    <div class="pill-avatar">${initial}</div>
+    <div class="pill-info">
+        <div class="pill-name">${r.username}</div>
+        <div class="pill-guess">${displayGuess}</div>
+    </div>
+    <div class="pill-badge">${badge}</div>
+</div>`;
+            });
+            document.getElementById('results-board').innerHTML = html;
+        }
+
+        // ── Host: start round ────────────────────────────────────────────
+        async function hostStartRound() {
+            if (!isHost || !currentRoom) return;
+            const difficulty = parseInt(document.getElementById('setDiff').value);
+            let word;
+            try {
+                const res = await fetch(`https://random-word-api.herokuapp.com/word?number=1&diff=${difficulty}`);
+                const data = await res.json();
+                word = data[0].toLowerCase();
+            } catch (e) {
+                word = FALLBACK_WORDS[Math.floor(Math.random() * FALLBACK_WORDS.length)];
+            }
+
+            const roundStartTime = Date.now();
+            // Clear answers for new round
+            const roomRef = doc(db, 'rooms', currentRoom);
+            await updateDoc(roomRef, {
+                state: 'playing',
+                currentWord: word,
+                roundStartTime
+            });
+
+            // Subscribe to answers and end round after timeout
+            clearInterval(roundTimer);
+            roundTimer = setTimeout(async () => {
+                await processRoundEnd(currentRoom, word);
+            }, ROUND_DURATION * 1000 + 200);
+        }
+
+        async function processRoundEnd(roomId, targetWord) {
+            // Gather all answers
+            const answersSnap = await getDoc(doc(db, 'rooms', roomId, 'answers', 'all'));
+            const playersSnap = await getDoc(doc(db, 'rooms', roomId, 'players', 'all'));
+
+            if (!answersSnap.exists() || !playersSnap.exists()) return;
+
+            const answers = answersSnap.data();
+            const players = playersSnap.data();
+            const results = [];
+            let winner = null;
+
+            for (const [pid, player] of Object.entries(players)) {
+                const ans = answers[pid] || { text: '', timeTaken: ROUND_DURATION };
+                const answer = ans.text || '';
+                const timeTaken = ans.timeTaken || ROUND_DURATION;
+
+                const distance = getEditDistance(targetWord, answer);
+                const maxLen = Math.max(targetWord.length, answer.length);
+                const accuracy = maxLen === 0 ? 0 : 1 - (distance / maxLen);
+
+                let status = 'wrong', points = 0;
+                if (answer === targetWord) { status = 'perfect'; points = 5; }
+                else if (accuracy >= 0.5 && answer.length > 0) { status = 'close'; points = Math.round(accuracy * 3); }
+
+                player.score += points;
+                if (player.score >= (roomData?.winScore || 100) && !winner) winner = player.username;
+
+                results.push({ username: player.username, answer, timeTaken, status, points });
+            }
+
+            // Sort results
+            const statusRank = { perfect: 1, close: 2, wrong: 3 };
+            results.sort((a, b) => {
+                if (statusRank[a.status] !== statusRank[b.status]) return statusRank[a.status] - statusRank[b.status];
+                return a.timeTaken - b.timeTaken;
+            });
+
+            // Update scores in players doc
+            for (const [pid, player] of Object.entries(players)) {
+                const playerRef = doc(db, 'rooms', roomId, 'players', pid);
+                await updateDoc(playerRef, { score: player.score });
+            }
+
+            // Store results and update room state
+            const roomRef = doc(db, 'rooms', roomId);
+            const nextState = winner ? 'gameOver' : 'roundOver';
+            const update = {
+                state: nextState,
+                currentWord: targetWord,
+                [`results.latest`]: results
+            };
+            if (winner) update.winner = winner;
+            await updateDoc(roomRef, update);
+
+            // Schedule next round
+            if (!winner) {
+                const delay = (roomData?.roundDelay || 6) * 1000;
+                setTimeout(() => hostStartRound(), delay);
+            }
+        }
+
+        async function returnToLobby() {
+            if (!isHost || !currentRoom) return;
+            await updateDoc(doc(db, 'rooms', currentRoom), {
+                state: 'lobby', currentWord: '', winner: null
+            });
+            // Reset all scores
+            const psnap = await getDoc(doc(db, 'rooms', currentRoom, 'players', 'all'));
+            if (psnap.exists()) {
+                const players = psnap.data();
+                for (const pid of Object.keys(players)) {
+                    await updateDoc(doc(db, 'rooms', currentRoom, 'players', pid), { score: 0 });
+                }
+            }
+            showScreen('lobby-screen');
+        }
+
+        function showGameOver(winner) {
+            document.getElementById('gameoverWinner').textContent = winner || 'Someone';
+            // Fetch final scores
+            getDoc(doc(db, 'rooms', currentRoom, 'players', 'all')).then(snap => {
+                if (!snap.exists()) return;
+                const players = Object.values(snap.data()).sort((a, b) => b.score - a.score);
+                const medals = ['🥇','🥈','🥉'];
+                document.getElementById('finalScores').innerHTML = players.map((p, i) =>
+                    `<li><span class="score-rank">${medals[i] || (i+1)}</span><span class="score-name">${p.username}</span><span class="score-pts">${p.score} pts</span></li>`
+                ).join('');
+            });
+            document.getElementById('returnLobbyBtn').style.display = isHost ? 'block' : 'none';
+            showScreen('gameover-screen');
+        }
+
+        // ── UI builders ─────────────────────────────────────────────────
+        function buildLobbyList(players) {
+            let html = '';
+            players.forEach(p => {
+                const initial = p.username?.charAt(0).toUpperCase() || '?';
+                html += `<li><div class="player-avatar">${initial}</div>${p.username}<span class="player-score">${p.score || 0} pts</span></li>`;
+            });
+            document.getElementById('lobbyPlayers').innerHTML = html;
+        }
+
+        function buildSidebar(players) {
+            if (!players) return;
+            const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+            const ranks = ['🥇','🥈','🥉'];
+            let html = '';
+            sorted.forEach((p, i) => {
+                const initial = p.username?.charAt(0).toUpperCase() || '?';
+                const pct = Math.min(100, Math.round(((p.score || 0) / winScoreGoal) * 100));
+                html += `<div class="sidebar-player${i===0?' style="background:var(--sidebar-row-top)"':''}">
+    <div class="sidebar-rank" style="color:${i===0?'#fbbf24':'#94a3b8'}">${ranks[i]||(i+1)}</div>
+    <div class="sidebar-avatar" style="background:${i===0?'linear-gradient(135deg,#4ade80,#16a34a)':'linear-gradient(135deg,#475569,#334155)'}">${initial}</div>
+    <div class="sidebar-info">
+        <div class="sidebar-name" style="color:${i===0?'#fff':'#e2e8f0'}">${p.username}</div>
+        <div class="sidebar-progress-track">
+            <div class="sidebar-progress-fill" style="width:${pct}%;background:${i===0?'var(--primary)':'var(--secondary)'}"></div>
+        </div>
+    </div>
+    <div class="sidebar-score" style="color:${i===0?'#4ade80':'#94a3b8'}">${p.score||0}</div>
+</div>`;
+            });
+            document.getElementById('sidebarPlayers').innerHTML = html;
+        }
+
+        // ── Input handlers ──────────────────────────────────────────────
+        document.getElementById('answerInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('answerInput').disabled) submitAnswer();
+        });
+
+        // ── Poll-based player sync (Firestore doesn't have collection listeners without firebase-admin) ──
+        // Use a polling approach for players since onSnapshot on collections isn't directly exposed in the CDN SDK
+        // We'll use a single 'all' document to store all players as a map, written by each client
+        // Override joinRoom to write to 'all' doc
+        let playersPollInterval = null;
+        let lastPlayerHash = '';
+
+        function startPlayerPolling(roomId) {
+            stopPlayerPolling();
+            playersPollInterval = setInterval(async () => {
+                try {
+                    const snap = await getDoc(doc(db, 'rooms', roomId, 'players', 'all'));
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        const newHash = JSON.stringify(data);
+                        if (newHash !== lastPlayerHash) {
+                            lastPlayerHash = newHash;
+                            const players = Object.values(data);
+                            buildLobbyList(players);
+                            buildSidebar(players);
+                        }
+                    }
+                } catch(e) { /* ignore */ }
+            }, 500);
+        }
+
+        function stopPlayerPolling() {
+            if (playersPollInterval) { clearInterval(playersPollInterval); playersPollInterval = null; }
+        }
+
+        // Override enterRoom to use polling
+        const originalEnterRoom = enterRoom;
+        enterRoom = async function(roomId) {
+            // Write current player to 'all' doc
+            const username = getUsername();
+            await setDoc(doc(db, 'rooms', roomId, 'players', clientId), {
+                username, score: 0, joinedAt: serverTimestamp()
+            });
+
+            // Update the 'all' aggregated document
+            const allSnap = await getDoc(doc(db, 'rooms', roomId, 'players', 'all'));
+            const allPlayers = allSnap.exists() ? allSnap.data() : {};
+            allPlayers[clientId] = { username, score: 0 };
+            await setDoc(doc(db, 'rooms', roomId, 'players', 'all'), allPlayers, { merge: true });
+
+            originalEnterRoom(roomId);
+            startPlayerPolling(roomId);
+        };
+
+        // Override createRoom too
+        const originalCreateRoom = createRoom;
+        createRoom = async function() {
+            const username = getUsername();
+            const difficulty = parseInt(document.getElementById('diff').value);
+            const roomId = generateRoomCode();
+            currentRoom = roomId;
+            isHost = true;
+
+            await setDoc(doc(db, 'rooms', roomId), {
+                hostId: clientId,
+                state: 'lobby',
+                currentWord: '',
+                roundStartTime: 0,
+                difficulty,
+                winScore: 100,
+                roundDelay: 6,
+                createdAt: serverTimestamp()
+            });
+
+            const username2 = getUsername();
+            await setDoc(doc(db, 'rooms', roomId, 'players', clientId), {
+                username: username2, score: 0, joinedAt: serverTimestamp()
+            });
+            await setDoc(doc(db, 'rooms', roomId, 'players', 'all'), {
+                [clientId]: { username: username2, score: 0 }
+            });
+
+            enterRoom(roomId);
+        };
+
+        // Override hostStartRound to clear answers
+        const originalHostStartRound = hostStartRound;
+        hostStartRound = async function() {
+            if (!isHost || !currentRoom) return;
+            // Clear previous answers
+            await setDoc(doc(db, 'rooms', currentRoom, 'answers', 'all'), {});
+            originalHostStartRound();
+        };
+
+        // Override submitAnswer to write to 'all' doc
+        const originalSubmitAnswer = submitAnswer;
+        submitAnswer = async function() {
+            if (hasSubmitted || !currentRoom) return;
+            hasSubmitted = true;
+            const text = document.getElementById('answerInput').value;
+            document.getElementById('answerInput').disabled = true;
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true; btn.textContent = '✓ Submitted!'; btn.style.background = '#16a34a';
+
+            const startMs = roomData?.roundStartTime?.toMillis ? roomData.roundStartTime.toMillis() : roomData?.roundStartTime;
+            const timeTaken = startMs ? ((Date.now() - startMs) / 1000).toFixed(1) : ROUND_DURATION.toFixed(1);
+
+            const ansSnap = await getDoc(doc(db, 'rooms', currentRoom, 'answers', 'all'));
+            const allAns = ansSnap.exists() ? ansSnap.data() : {};
+            allAns[clientId] = { text: text.toLowerCase().trim(), timeTaken: parseFloat(timeTaken) };
+            await setDoc(doc(db, 'rooms', currentRoom, 'answers', 'all'), allAns);
+        };
+
+        // Clean up on disconnect
+        window.addEventListener('beforeunload', async () => {
+            if (currentRoom && clientId) {
+                try {
+                    const allSnap = await getDoc(doc(db, 'rooms', currentRoom, 'players', 'all'));
+                    if (allSnap.exists()) {
+                        const allPlayers = allSnap.data();
+                        delete allPlayers[clientId];
+                        await setDoc(doc(db, 'rooms', currentRoom, 'players', 'all'), allPlayers);
+                    }
+                    await deleteDoc(doc(db, 'rooms', currentRoom, 'players', clientId));
+                } catch(e) { /* ignore */ }
+            }
+        });
+    </script>
+</body>
 </html>
