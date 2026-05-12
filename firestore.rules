@@ -17,30 +17,12 @@ service cloud.firestore {
       allow delete: if true;
     }
     
-    // SpellCheck Party — allow anyone to create and read rooms, host controls updates
+    // SpellCheck Party — public game, anyone can read/write rooms and subcollections
     match /rooms/{roomId} {
-      allow create: if true;
-      allow read: if true;
-      allow update: if request.resource.data.diff() == {field: 'state'} ||
-                       request.resource.data.diff() == {field: 'currentWord'} ||
-                       request.resource.data.diff() == {field: 'roundStartTime'} ||
-                       request.resource.data.diff() == {field: 'difficulty'} ||
-                       request.resource.data.diff() == {field: 'winScore'} ||
-                       request.resource.data.diff() == {field: 'roundDelay'} ||
-                       request.resource.data.diff().size() > 0;
-      allow delete: if true;
-
-      match /players/{playerId} {
-        allow read: if true;
-        allow write: if true;
-        allow delete: if true;
-      }
-      match /answers/{docId} {
-        allow read, write: if true;
-      }
-      match /results/{docId} {
-        allow read, write: if true;
-      }
+      allow create, read, update, delete: if true;
+      match /players/{playerId} { allow create, read, update, delete: if true; }
+      match /answers/{docId}    { allow create, read, update, delete: if true; }
+      match /results/{docId}     { allow create, read, update, delete: if true; }
     }
   }
 }
