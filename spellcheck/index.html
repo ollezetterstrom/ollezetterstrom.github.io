@@ -1189,6 +1189,9 @@
         let roomData     = null;
         let hasSubmitted = false;
         let currentWord  = '';
+        let currentRoundPlayerCount = 0; // Track how many players in current round
+        let roundActive = false;         // Is a round currently active
+        let unsubAnswers = null;         // Subscribe to answers for early round end
 
         // ── Utilities ────────────────────────────────────────────────────
         function generateRoomCode() {
@@ -1239,9 +1242,11 @@
         function cleanup() {
             if (unsubRoom)    { unsubRoom();    unsubRoom    = null; }
             if (unsubPlayers) { unsubPlayers(); unsubPlayers = null; }
+            if (unsubAnswers) { unsubAnswers(); unsubAnswers = null; }
             if (hostRoundTimer)    { clearTimeout(hostRoundTimer);       hostRoundTimer    = null; }
             if (localTimerInterval){ clearInterval(localTimerInterval);  localTimerInterval = null; }
             if (countdownInterval) { clearInterval(countdownInterval);   countdownInterval  = null; }
+            roundActive = false;
         }
 
         function copyRoomUrl() {
@@ -1394,6 +1399,35 @@
             // Clear answers from last round
             await setDoc(doc(db, 'rooms', currentRoom, 'answers', 'all'), {});
 
+            // Get current player count for this round
+            const playersSnap = await getDoc(doc(db, 'rooms', currentRoom, 'players', 'all'));
+            currentRoundPlayerCount = playersSnap.exists() ? Object.keys(playersSnap.data()).length : 0;
+            roundActive = true;
+
+            // Clean up old answer subscription
+            if (unsubAnswers) { unsubAnswers(); unsubAnswers = null; }
+
+            // Subscribe to answers to detect when everyone has responded
+            if (currentRoundPlayerCount > 1) {
+                unsubAnswers = onSnapshot(doc(db, 'rooms', currentRoom, 'answers', 'all'), async (ansSnap) => {
+                    if (!roundActive || !ansSnap.exists()) return;
+                    const answers = ansSnap.data();
+                    const answerCount = Object.keys(answers).length;
+                    
+                    // If all players have answered, end round early
+                    if (answerCount >= currentRoundPlayerCount) {
+                        roundActive = false;
+                        if (hostRoundTimer) { clearTimeout(hostRoundTimer); hostRoundTimer = null; }
+                        if (unsubAnswers) { unsubAnswers(); unsubAnswers = null; }
+                        
+                        // Get the word from room data
+                        const roomSnap = await getDoc(doc(db, 'rooms', currentRoom));
+                        const word = roomSnap.exists() ? roomSnap.data().currentWord : '';
+                        processRoundEnd(currentRoom, word);
+                    }
+                });
+            }
+
             const difficulty = parseInt(document.getElementById('setDiff').value) || 3;
             const word = await pickWord(difficulty);
             const roundStartTime = Date.now();
@@ -1407,7 +1441,10 @@
 
             // After the round duration, process results
             if (hostRoundTimer) clearTimeout(hostRoundTimer);
-            hostRoundTimer = setTimeout(() => processRoundEnd(currentRoom, word), ROUND_DURATION * 1000 + 600);
+            hostRoundTimer = setTimeout(() => {
+                roundActive = false;
+                processRoundEnd(currentRoom, word);
+            }, ROUND_DURATION * 1000 + 600);
         }
 
         // ── Client: handle a round starting ──────────────────────────────
