@@ -1105,7 +1105,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, getDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
@@ -1258,7 +1258,10 @@
             if (c) { c.style.display = 'inline'; setTimeout(() => c.style.display = 'none', 2000); }
         }
 
-        function exitToHome() {
+        async function exitToHome() {
+            if (currentRoom && clientId) {
+                await deleteDoc(doc(db, 'rooms', currentRoom, 'players', clientId));
+            }
             cleanup();
             currentRoom = null; isHost = false;
             showScreen('home-screen');
@@ -1324,6 +1327,13 @@
             document.getElementById('waitingMsg').style.display = isHost ? 'none'  : 'block';
 
             showScreen('lobby-screen');
+
+            // Clean up player when leaving (close tab, refresh, navigate away)
+            window.addEventListener('beforeunload', () => {
+                if (currentRoom && clientId) {
+                    deleteDoc(doc(db, 'rooms', currentRoom, 'players', clientId));
+                }
+            });
 
             // Pre-fetch words for all difficulties so first round is fast
             [1,3,5].forEach(diff => {
@@ -1477,12 +1487,35 @@
 
             // Text-to-speech — speak once, repeat after 3 s
             function speak() {
+                if (!('speechSynthesis' in window)) {
+                    console.warn("Speech synthesis not supported");
+                    document.getElementById('timerLabel').textContent = 'type your answer!';
+                    return;
+                }
+                
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length === 0) {
+                    console.warn("No voices loaded yet, waiting...");
+                    return;
+                }
+                
                 const u = new SpeechSynthesisUtterance(word);
                 u.rate = 0.8;
+                u.lang = 'en-US';
                 window.speechSynthesis.cancel();
                 window.speechSynthesis.speak(u);
             }
-            speak();
+            
+            // Handle case where voices aren't loaded yet (especially on Linux)
+            if (window.speechSynthesis.getVoices().length === 0) {
+                document.getElementById('timerLabel').textContent = 'loading voice...';
+                window.speechSynthesis.onvoiceschanged = () => {
+                    document.getElementById('timerLabel').textContent = 'listen carefully';
+                    speak();
+                };
+            } else {
+                speak();
+            }
             setTimeout(speak, 3500);
 
             // Compute how much time is left (accounts for late joiners)
