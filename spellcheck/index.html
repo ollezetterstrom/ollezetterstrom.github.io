@@ -1119,11 +1119,59 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // ── Word lists by difficulty ─────────────────────────────────────
-        const WORDS = {
-            1: ['apple','table','house','brave','chair','clean','dance','early','fancy','giant','happy','input','jumpy','knock','light','magic','night','ocean','peace','queen','river','smile','track','under','vivid','water','xenon','yacht','zebra','blend','cloud','dream','elbow','flood','grace','honey','igloo','judge','karma','lemon','month','nerve','onion','plain','query','rabbi','shiny','tiger','ultra','voice','witch'],
-            3: ['absent','borrow','castle','double','empire','famine','goblin','hamlet','insult','jigsaw','kernel','lagoon','marble','needle','origin','pierce','quartz','rugged','savage','tangle','unique','velvet','walrus','yeoman','zombie','beacon','cipher','drench','errand','frosty','gadget','hybrid','income','jockey','kettle','lament','meadow','nimble','opaque','pardon','quiver','ramble','sicken','trauma','unfair','vexing','wander','yearly'],
-            5: ['abscess','baroque','caliber','dialect','eclipse','furtive','gauntlet','hiccup','illicit','juncture','knapsack','lacquer','mystic','nuance','ominous','psyche','quarrel','raucous','seraph','tycoon','unwieldy','vagrant','wretched','zealous','abyss','benign','coerce','dearth','elicit','façade','ghastly','hallowed','impasse','jarring','macabre','noxious','ostrich','plaque','quagmire','ransack','scourge','tirade','urchin','vicious','whimsy','yonder','zealot','beguile','crevice']
+        // ── Word cache from API ────────────────────────────────────────────
+        const wordCache = { 1: [], 3: [], 5: [] };
+        let cacheLoading = { 1: false, 3: false, 5: false };
+
+        async function fetchWordsFromAPI(difficulty) {
+            // Map our difficulty (1,3,5) to API difficulty (1-5)
+            // Our 1 = API 1 (easy), Our 3 = API 3 (medium), Our 5 = API 5 (hard)
+            const apiDiff = difficulty;
+            const count = 30; // Fetch 30 words at a time
+            
+            try {
+                const res = await fetch(`https://random-word-api.herokuapp.com/word?number=${count}&diff=${apiDiff}&len_min=4&len_max=10`);
+                if (!res.ok) throw new Error('API failed');
+                const words = await res.json();
+                // Filter out any words with spaces or special chars
+                return words.filter(w => /^[a-z]+$/.test(w));
+            } catch (e) {
+                console.warn('Word API failed, using fallback:', e);
+                return null;
+            }
+        }
+
+        async function ensureWordPool(difficulty) {
+            // Return cached word if available
+            if (wordCache[difficulty].length > 0) {
+                return wordCache[difficulty].pop();
+            }
+            
+            // If not loading and cache empty, fetch from API
+            if (!cacheLoading[difficulty] && wordCache[difficulty].length === 0) {
+                cacheLoading[difficulty] = true;
+                const words = await fetchWordsFromAPI(difficulty);
+                cacheLoading[difficulty] = false;
+                
+                if (words && words.length > 0) {
+                    wordCache[difficulty] = words;
+                }
+            }
+            
+            // If still empty after fetch attempt, use fallback
+            if (wordCache[difficulty].length === 0) {
+                const fallback = FALLBACK_WORDS[difficulty] || FALLBACK_WORDS[3];
+                return fallback[Math.floor(Math.random() * fallback.length)];
+            }
+            
+            return wordCache[difficulty].pop();
+        }
+
+        // ── Fallback word lists (used if API fails) ────────────────────────
+        const FALLBACK_WORDS = {
+            1: ['apple','table','house','brave','chair','clean','dance','early','fancy','giant','happy','input','jumpy','knock','light','magic','night','ocean','peace','queen','river','smile','track','under','vivid','water','zebra','blend','cloud','dream','elbow','flood','grace','honey','lemon','month','plain','shiny','tiger','voice','witch','bread','chair','door','fish','grape','house','juice','kite','lamp','mouse','nest','orange','piano','queen','radio','sheep','train','unity','video','whale'],
+            3: ['absent','borrow','castle','double','empire','famine','goblin','hamlet','insult','jigsaw','kernel','lagoon','marble','needle','origin','pierce','quartz','rugged','savage','tangle','unique','velvet','walrus','zombie','beacon','cipher','drench','errand','frosty','gadget','hybrid','income','jockey','kettle','lament','meadow','nimble','opaque','pardon','quiver','ramble','sicken','trauma','unfair','vexing','wander','yearly','anchor','bronze','candle','danger','elastic','fossil','gather','herbal','island','jungle','kitten','lunar','marble','noble','orbit','planet','rescue','sphere','tunnel','uplift','vector'],
+            5: ['abscess','baroque','caliber','dialect','eclipse','furtive','gauntlet','hiccup','illicit','juncture','knapsack','lacquer','mystic','nuance','ominous','psyche','quarrel','raucous','seraph','tycoon','unwieldy','vagrant','wretched','zealous','abyss','benign','coerce','dearth','elicit','façade','ghastly','hallowed','impasse','jarring','macabre','noxious','ostrich','plaque','quagmire','ransack','scourge','tirade','urchin','vicious','whimsy','yonder','zealot','beguile','crevice','dynamic','entropy','fervent','gossamer','heterodox','iconoclast','juxtapose','kaleidoscope','labyrinth','maelstrom','nebulous','oblivion','paradigm','quintessence','rhetoric','soliloquy','tremulous','umbrage','vicarious','winsome']
         };
 
         const ROUND_DURATION = 20;
@@ -1150,9 +1198,8 @@
             return code;
         }
 
-        function pickWord(difficulty) {
-            const pool = WORDS[difficulty] || WORDS[3];
-            return pool[Math.floor(Math.random() * pool.length)];
+        async function pickWord(difficulty) {
+            return await ensureWordPool(difficulty);
         }
 
         function getEditDistance(a, b) {
@@ -1273,6 +1320,17 @@
 
             showScreen('lobby-screen');
 
+            // Pre-fetch words for all difficulties so first round is fast
+            [1,3,5].forEach(diff => {
+                if (!cacheLoading[diff] && wordCache[diff].length === 0) {
+                    cacheLoading[diff] = true;
+                    fetchWordsFromAPI(diff).then(words => {
+                        cacheLoading[diff] = false;
+                        if (words && words.length > 0) wordCache[diff] = words;
+                    });
+                }
+            });
+
             // Subscribe to room state
             unsubRoom = onSnapshot(doc(db, 'rooms', roomId), snap => {
                 if (!snap.exists()) return;
@@ -1337,7 +1395,7 @@
             await setDoc(doc(db, 'rooms', currentRoom, 'answers', 'all'), {});
 
             const difficulty = parseInt(document.getElementById('setDiff').value) || 3;
-            const word = pickWord(difficulty);
+            const word = await pickWord(difficulty);
             const roundStartTime = Date.now();
 
             await updateDoc(doc(db, 'rooms', currentRoom), {
