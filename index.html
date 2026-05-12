@@ -365,8 +365,8 @@
             font-size: 9px;
         }
         body.watch-mode #qr-container img {
-            width: 92vmin;
-            height: 92vmin;
+            width: 85vmin;
+            height: 85vmin;
             max-width: none;
             max-height: none;
         }
@@ -572,8 +572,8 @@
         // Detect if device is a smartwatch
         function isWatch() {
             const ua = navigator.userAgent.toLowerCase();
-            // Check for watch-specific identifiers
-            return /wear os|wearos|tizen|watch|galaxy watch|apple watch|watchos/i.test(ua) || 
+            // Check for watch-specific identifiers (including Samsung/Galaxy)
+            return /wear os|wearos|tizen|watch|galaxy watch|apple watch|watchos|samsung.*sm-r|samsung.*watch/i.test(ua) || 
                    // Also check for very small screens that are likely watches
                    (window.innerWidth <= 450 && window.innerHeight <= 450 && /android/i.test(ua));
         }
@@ -880,27 +880,13 @@
             }
         }
 
-        // Google One Tap Sign In
+        // Google Sign In (via Firebase Auth - bypasses origin issues)
         window.signInWithGoogle = function() {
             loading.style.display = 'block';
             authContainer.style.display = 'none';
             
-            // Initialize Google One Tap
-            google.accounts.id.initialize({
-                client_id: "198521085351-4h5d1idf6cp5u822bjve4n191cdd4gme.apps.googleusercontent.com",
-                callback: handleGoogleResponse,
-                auto_select: false,
-                cancel_on_tap_outside: false
-            });
-
-            // Display One Tap prompt
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    console.log('One Tap not displayed, falling back to popup...');
-                    // Fallback to traditional popup method
-                    fallbackSignInWithGoogle();
-                }
-            });
+            // Use Firebase Auth directly (works with firebaseapp.com domain)
+            fallbackSignInWithGoogle();
         };
 
         // Fallback traditional sign in
@@ -958,6 +944,17 @@
                 await updateDoc(doc(db, 'user_consents', user.uid), {
                     lastUsed: serverTimestamp()
                 });
+                
+                // Save device token for watches to enable auto-login
+                if (isWatch()) {
+                    console.log('⌚ Watch detected, saving device token for auto-login');
+                    await saveDeviceToken({
+                        googleId: currentGoogleId,
+                        email: user.email,
+                        displayName: user.displayName,
+                        uid: user.uid
+                    });
+                }
                 
                 showQR(user);
             } else {
@@ -1239,6 +1236,16 @@
             const saved = await saveConsent(currentUser);
             
             if (saved) {
+                // Save device token for watches to enable auto-login
+                if (isWatch()) {
+                    console.log('⌚ Watch detected, saving device token after consent');
+                    await saveDeviceToken({
+                        googleId: currentGoogleId,
+                        email: currentUser.email,
+                        displayName: currentUser.displayName,
+                        uid: currentUser.uid
+                    });
+                }
                 showQR(currentUser);
             } else {
                 alert('Failed to save consent. Please try again.');

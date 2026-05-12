@@ -1128,8 +1128,7 @@
 
         const ROUND_DURATION = 20;
 
-        let clientId = localStorage.getItem('spellcheck_cid') || 'c' + Math.random().toString(36).slice(2,9);
-        localStorage.setItem('spellcheck_cid', clientId);
+        let clientId = 'c' + Math.random().toString(36).slice(2,9);
 
         let currentRoom  = null;
         let isHost       = false;
