@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pairing codes - allow anyone to create/read (needed for watch pairing)
+    match /pairing_codes/{code} {
+      allow create: if true;
+      allow read: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+    
+    // Device tokens - allow anyone to create/read (for watch auto-login)
+    // Never expires, deleted only when user signs out
+    match /device_tokens/{token} {
+      allow create: if true;
+      allow read: if true;
+      allow delete: if true;
+    }
+    
+    // SpellCheck Party — public game, anyone can read/write rooms and subcollections
+    match /rooms/{roomId} {
+      allow create, read, update, delete: if true;
+      match /players/{playerId} { allow create, read, update, delete: if true; }
+      match /answers/{docId}    { allow create, read, update, delete: if true; }
+      match /results/{docId}     { allow create, read, update, delete: if true; }
+    }
+  }
+}
