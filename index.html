@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0a0a">
 <meta name="description" content="Lunchpoäng — din dagliga lunchbiljett. Logga in med Google för att visa QR-koden.">
 <title>Lunchpoäng</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
@@ -522,7 +523,12 @@ async function hasConsent(user){
     return snap.exists();
   }catch(e){
     console.error('hasConsent', e);
-    if(String(e.code).includes('permission')) toast('Behörighetsfel — kontrollera firestore.rules', 'error');
+    const msg = String(e.message||'') + String(e.code||'');
+    if(msg.includes('ERR_BLOCKED_BY_CLIENT') || msg.includes('blocked') || e.code==='unavailable'){
+      toast('Anslutningen blockeras av annonsblockerare — stäng av för denna sida och ladda om', 'error', 6000);
+    } else if(String(e.code).includes('permission')) {
+      toast('Behörighetsfel — reglerna deployas (fixad nyss, ladda om om det kvarstår)', 'error', 5000);
+    }
     return false;
   }
 }
@@ -536,7 +542,16 @@ async function storeConsent(user, googleId){
       lastUsed: serverTimestamp()
     });
     return true;
-  }catch(e){ console.error(e); toast('Kunde inte spara samtycke: ' + e.message, 'error'); return false; }
+  }catch(e){
+    console.error(e);
+    const msg = String(e.message||'');
+    if(msg.includes('ERR_BLOCKED_BY_CLIENT') || msg.includes('blocked') || e.code==='unavailable'){
+      toast('Kunde inte spara — adblocker blockerar Firestore. Stäng av och försök igen.', 'error', 6000);
+    } else {
+      toast('Kunde inte spara samtycke: ' + e.message, 'error');
+    }
+    return false;
+  }
 }
 
 // ---- view transitions ----
