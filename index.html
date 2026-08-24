@@ -1,1406 +1,838 @@
 <!DOCTYPE html>
-<html>
+<html lang="sv">
 <head>
-    <title>Lunch Ticket</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        body { 
-            background-color: #000000;
-            display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) 
-                    env(safe-area-inset-bottom) env(safe-area-inset-left);
-        }
-        
-        #auth-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        #consent-container {
-            display: none;
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 90vw;
-            max-height: 90vh;
-            overflow-y: auto;
-            text-align: center;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        #consent-container h2 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 18px;
-        }
-
-        #consent-container p {
-            margin: 0;
-            color: #666;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        #qr-container {
-            background-color: white;
-            padding: 10px;
-            border-radius: 10px;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        img { 
-            width: 80vmin; 
-            height: 80vmin; 
-            max-width: 300px; 
-            max-height: 300px; 
-            display: block;
-        }
-        
-        #date-text {
-            color: #333;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        #user-info {
-            color: white;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        #user-info h3 {
-            margin: 0 0 5px 0;
-            font-size: 16px;
-        }
-
-        #user-info p {
-            margin: 0;
-            font-size: 12px;
-            opacity: 0.7;
-        }
-
-        .google-btn {
-            background-color: white;
-            color: #444;
-            border: none;
-            border-radius: 4px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.25);
-            transition: box-shadow 0.2s;
-        }
-
-        .google-btn:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-
-        .google-btn img {
-            width: 18px;
-            height: 18px;
-        }
-
-        .consent-btn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .consent-btn:hover {
-            background-color: #3367d6;
-        }
-
-        .cancel-btn {
-            background-color: transparent;
-            color: #666;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .cancel-btn:hover {
-            background-color: #f5f5f5;
-        }
-
-        .logout-btn {
-            background-color: transparent;
-            color: #666;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .logout-btn:hover {
-            background-color: #f5f5f5;
-        }
-
-        .delete-btn {
-            background-color: transparent;
-            color: #999;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 10px;
-            cursor: pointer;
-            margin-top: 8px;
-            text-decoration: underline;
-            font-weight: normal;
-        }
-
-        .delete-btn:hover {
-            background-color: transparent;
-            color: #dc3545;
-        }
-
-        #loading {
-            color: white;
-            font-size: 14px;
-        }
-
-        #pairing-container {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            text-align: center;
-        }
-
-        .pairing-code {
-            background-color: white;
-            color: #333;
-            font-size: 48px;
-            font-weight: bold;
-            letter-spacing: 8px;
-            padding: 20px 30px;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .pairing-instructions {
-            color: white;
-            font-size: 14px;
-            max-width: 80vw;
-            line-height: 1.4;
-        }
-
-        .pairing-status {
-            color: #4CAF50;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .pairing-input {
-            font-size: 24px;
-            letter-spacing: 4px;
-            text-align: center;
-            padding: 10px;
-            border-radius: 5px;
-            border: 2px solid #ccc;
-            width: 150px;
-        }
-
-        .pair-btn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .pair-btn:hover {
-            background-color: #3367d6;
-        }
-
-        .use-pairing-btn {
-            background-color: transparent;
-            color: #4285f4;
-            border: 2px solid #4285f4;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .use-pairing-btn:hover {
-            background-color: rgba(66, 133, 244, 0.1);
-        }
-
-        .back-btn {
-            background-color: transparent;
-            color: #999;
-            border: 1px solid #666;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-
-        .back-btn:hover {
-            background-color: rgba(255,255,255,0.1);
-        }
-
-        /* Responsive design for small screens */
-        @media (max-width: 300px) {
-            #qr-container, #consent-container { 
-                padding: 6px; 
-                border-radius: 8px;
-            }
-            #date-text { 
-                font-size: 11px; 
-            }
-            .google-btn { 
-                padding: 10px 20px; 
-                font-size: 14px; 
-            }
-            .logout-btn {
-                padding: 6px 12px;
-                font-size: 11px;
-            }
-            #user-info h3 { 
-                font-size: 14px; 
-            }
-            #user-info p {
-                font-size: 10px;
-            }
-            #consent-container h2 {
-                font-size: 16px;
-            }
-            #consent-container p {
-                font-size: 12px;
-            }
-            .consent-btn {
-                padding: 10px 20px;
-                font-size: 14px;
-            }
-        }
-
-        /* Smart watch styles - applied via JS when watch detected */
-        body.watch-mode #qr-container, 
-        body.watch-mode #consent-container { 
-            padding: 4px; 
-            border-radius: 6px;
-            gap: 4px;
-        }
-        body.watch-mode #date-text { 
-            font-size: 8px; 
-        }
-        body.watch-mode .google-btn { 
-            padding: 6px 12px; 
-            font-size: 11px; 
-            gap: 4px;
-        }
-        body.watch-mode .google-btn img {
-            width: 12px;
-            height: 12px;
-        }
-        body.watch-mode .logout-btn {
-            padding: 2px 6px !important;
-            font-size: 8px !important;
-            margin-top: 2px !important;
-        }
-        body.watch-mode .consent-btn {
-            padding: 6px 12px;
-            font-size: 11px;
-        }
-        body.watch-mode .cancel-btn {
-            padding: 4px 10px;
-            font-size: 10px;
-        }
-        body.watch-mode #user-info {
-            margin-bottom: 4px;
-        }
-        body.watch-mode #user-info h3 { 
-            font-size: 10px; 
-            margin-bottom: 1px;
-        }
-        body.watch-mode #user-info p {
-            font-size: 8px;
-        }
-        body.watch-mode #auth-container {
-            gap: 8px;
-        }
-        body.watch-mode #loading {
-            font-size: 10px;
-        }
-        body.watch-mode #consent-container h2 {
-            font-size: 12px;
-        }
-        body.watch-mode #consent-container p {
-            font-size: 9px;
-        }
-        body.watch-mode #qr-container img {
-            width: 85vmin;
-            height: 85vmin;
-            max-width: none;
-            max-height: none;
-        }
-        body.watch-mode .delete-btn {
-            display: none !important;
-        }
-        body.watch-mode #pairing-section {
-            display: none !important;
-        }
-        body.watch-mode #qr-container {
-            padding: 2px;
-            gap: 2px;
-            position: relative;
-        }
-        body.watch-mode #user-info {
-            position: absolute;
-            top: 2px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            padding: 2px 6px;
-            border-radius: 10px;
-            z-index: 10;
-        }
-        body.watch-mode #user-info h3 {
-            font-size: 8px;
-            margin: 0;
-        }
-        body.watch-mode #user-info p {
-            font-size: 6px;
-            margin: 0;
-        }
-        body.watch-mode .logout-btn {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            padding: 1px 4px !important;
-            font-size: 6px !important;
-            z-index: 10;
-        }
-
-        /* Landscape orientation on phones */
-        @media (orientation: landscape) and (max-height: 500px) {
-            body {
-                flex-direction: row;
-                padding: 20px;
-            }
-            #user-info {
-                margin-bottom: 0;
-                margin-right: 20px;
-                max-width: 200px;
-            }
-            #qr-container, #consent-container {
-                flex-shrink: 0;
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="description" content="Lunchpoäng — din dagliga lunchbiljett. Logga in med Google för att visa QR-koden.">
+<title>Lunchpoäng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --bg2:#141414;
+    --card:#ffffff;
+    --card2:#f6f6f6;
+    --text:#111;
+    --muted:#6b7280;
+    --muted2:#9ca3af;
+    --border:#e5e7eb;
+    --primary:#111827;
+    --primary-h:#000;
+    --accent:#2563eb;
+    --accent-h:#1d4ed8;
+    --success:#16a34a;
+    --danger:#dc2626;
+    --radius:16px;
+    --radius-sm:10px;
+    --shadow: 0 8px 30px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.08);
+    --shadow-lg: 0 20px 50px rgba(0,0,0,.18);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -15%, #1e293b 0%, transparent 60%), var(--bg);
+    color:#fff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100dvh;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  /* toast */
+  #toast-stack{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    z-index:9999; display:flex; flex-direction:column; gap:8px; width:min(92vw,420px); pointer-events:none;
+  }
+  .toast{
+    background:#1f2937; color:#fff; padding:12px 14px; border-radius:10px; font-size:13px; line-height:1.4;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.08);
+    animation: toastIn .22s ease;
+    pointer-events:auto;
+  }
+  .toast.error{background:#7f1d1d; border-color:rgba(255,255,255,.12)}
+  .toast.success{background:#14532d}
+  @keyframes toastIn{from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:translateY(0)}}
+  /* app shell */
+  #app{width:100%; max-width:420px; display:flex; flex-direction:column; align-items:stretch;}
+  .view{display:none; flex-direction:column; align-items:center; gap:14px; width:100%; animation: fade .22s ease}
+  .view.active{display:flex}
+  @keyframes fade{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)}}
+  .brand{
+    text-align:center; margin-bottom:2px;
+  }
+  .brand h1{
+    margin:0; font-size:28px; font-weight:700; letter-spacing:-.03em;
+    display:flex; align-items:center; gap:10px; justify-content:center;
+  }
+  .brand p{margin:6px 0 0; color:rgba(255,255,255,.6); font-size:13px}
+  /* cards */
+  .card{
+    background:var(--card); color:var(--text);
+    border-radius:var(--radius); padding:22px;
+    box-shadow: var(--shadow-lg); width:100%;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .card.secondary{
+    background:rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(10px); box-shadow:none; text-align:center;
+  }
+  .kicker{font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  .card.secondary .kicker{color:rgba(255,255,255,.6)}
+  h2{margin:0; font-size:18px; font-weight:700; letter-spacing:-.02em}
+  .muted{color:var(--muted); font-size:13px; line-height:1.5; margin:0}
+  .muted small{font-size:12px}
+  /* buttons */
+  .btn{
+    appearance:none; border:none; border-radius: 999px; padding:13px 18px; font-size:15px; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    transition: all .15s ease; width:100%; line-height:1;
+  }
+  .btn:disabled{opacity:.6; cursor:not-allowed}
+  .btn-primary{background:var(--primary); color:#fff}
+  .btn-primary:hover{background:var(--primary-h); transform:translateY(-1px)}
+  .btn-accent{background:var(--accent); color:#fff}
+  .btn-accent:hover{background:var(--accent-h)}
+  .btn-ghost{background:#fff; color:#111; border:1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,.06)}
+  .btn-ghost:hover{background:var(--card2)}
+  .btn-soft{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.12)}
+  .btn-soft:hover{background:rgba(255,255,255,.12)}
+  .btn-small{padding:10px 14px; font-size:13px}
+  .google-icon{width:18px; height:18px; display:block}
+  /* loading */
+  .loader{
+    width:22px; height:22px; border:2.5px solid rgba(255,255,255,.25); border-top-color:#fff; border-radius:50%;
+    animation: spin .7s linear infinite;
+  }
+  .loader.dark{border-color:rgba(0,0,0,.15); border-top-color:#111}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #view-loading .card.secondary{padding:28px 22px}
+  /* QR */
+  #qr-card{padding:16px; gap:12px; align-items:stretch}
+  .user-chip{
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    background:var(--card2); border-radius: 999px; border:1px solid var(--border);
+  }
+  .avatar{
+    width:36px; height:36px; border-radius:50%; background:#111; color:#fff;
+    display:grid; place-items:center; font-weight:700; font-size:14px; flex-shrink:0;
+  }
+  .user-meta{min-width:0; flex:1}
+  .user-meta strong{display:block; font-size:13px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .user-meta span{display:block; font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .qr-wrap{
+    background:#fff; border-radius:12px; padding:14px;
+    display:grid; place-items:center; border:1px solid var(--border);
+  }
+  .qr-wrap img, .qr-wrap canvas{width:100% !important; height:auto !important; max-width:280px; display:block}
+  #qr-wrap:empty::before{
+    content:'';
+    width:280px; height:280px; display:block; border-radius:8px;
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 37%, #f3f4f6 63%);
+    background-size:400% 100%; animation: shimmer 1.2s ease infinite;
+  }
+  @keyframes shimmer{0%{background-position:100% 0} 100%{background-position:-100% 0}}
+  .qr-foot{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 2px}
+  .date-badge{
+    font-family: JetBrains Mono, monospace; font-size:12px; font-weight:700; letter-spacing:.04em;
+    background:var(--card2); border:1px solid var(--border); padding:6px 10px; border-radius:999px;
+  }
+  .qr-actions{display:flex; gap:8px; flex-wrap:wrap}
+  .qr-actions .btn{flex:1}
+  .divider{height:1px; background:var(--border); margin:2px 0}
+  .pair-row{
+    display:flex; gap:8px; align-items:center;
+  }
+  .pair-row input{
+    flex:1; font-family: JetBrains Mono, monospace; font-size:18px; letter-spacing:.18em; text-align:center;
+    padding:11px 8px; border-radius:999px; border:1px solid var(--border); background:#fff; outline:none;
+  }
+  .pair-row input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  .link-btn{
+    background:none; border:none; color:var(--muted); font-size:12px; text-decoration:underline; cursor:pointer; padding:6px;
+  }
+  .link-btn:hover{color:var(--text)}
+  .link-btn.danger{color:#9ca3af}
+  .link-btn.danger:hover{color:var(--danger)}
+  /* consent */
+  .consent-list{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px}
+  .consent-list li{
+    display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.4; color:#374151;
+    background:var(--card2); border:1px solid var(--border); padding:10px 12px; border-radius:10px;
+  }
+  .consent-list li span{flex:1}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--accent); margin-top:6px; flex-shrink:0}
+  /* pairing code */
+  .code-big{
+    font-family: JetBrains Mono, monospace; font-size:44px; font-weight:700; letter-spacing:.18em;
+    background:#fff; color:#111; padding:18px 22px; border-radius:14px; border:1px solid var(--border);
+    box-shadow: var(--shadow); text-align:center; min-width: 220px;
+  }
+  .status{font-size:13px; font-weight:600; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12)}
+  .status.ok{background:rgba(22,163,74,.15); border-color:rgba(22,163,74,.3); color:#bbf7d0}
+  .status.err{background:rgba(220,38,38,.15); border-color:rgba(220,38,38,.3); color:#fecaca}
+  /* footer */
+  .foot{margin-top:14px; text-align:center; color:rgba(255,255,255,.45); font-size:11px}
+  .foot a{color:rgba(255,255,255,.7); text-decoration:underline}
+  /* watch mode */
+  @media (max-width: 380px){
+    .brand h1{font-size:24px}
+    .card{padding:18px}
+    .code-big{font-size:36px; padding:14px 16px}
+  }
+  body.watch-mode{
+    background: #000;
+    padding:0;
+  }
+  body.watch-mode #app{max-width:none; width:100vw; height:100dvh; justify-content:center; padding:6px}
+  body.watch-mode .brand{display:none}
+  body.watch-mode .foot{display:none}
+  body.watch-mode #qr-card{
+    padding:6px; border-radius:10px; gap:6px; box-shadow:none;
+  }
+  body.watch-mode .user-chip{padding:6px 8px; gap:8px}
+  body.watch-mode .avatar{width:28px; height:28px; font-size:12px}
+  body.watch-mode .user-meta strong{font-size:11px}
+  body.watch-mode .user-meta span{font-size:10px}
+  body.watch-mode .qr-wrap{padding:6px; border:none; background:#fff}
+  body.watch-mode .qr-wrap img, body.watch-mode .qr-wrap canvas{max-width:none}
+  body.watch-mode .qr-foot{justify-content:center}
+  body.watch-mode .pair-row, body.watch-mode .divider, body.watch-mode .qr-actions .btn-soft, body.watch-mode #delete-btn{display:none !important}
+  body.watch-mode .qr-actions .btn{padding:8px 10px; font-size:12px}
+  @media (orientation: landscape) and (max-height: 500px){
+    body:not(.watch-mode){justify-content:flex-start; padding-top:18px}
+    body:not(.watch-mode) #app{flex-direction:row; align-items:flex-start; gap:16px; max-width:720px}
+    body:not(.watch-mode) .brand{flex:1; text-align:left; align-self:center}
+  }
+</style>
 </head>
 <body>
-    <!-- Firebase SDK -->
-    <script type="module">
-        console.log('🚀 Lunch Ticket v2.0 - Page loaded at:', new Date().toLocaleTimeString());
-        console.log('⌚ User Agent:', navigator.userAgent);
-        
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { 
-            getAuth, 
-            GoogleAuthProvider, 
-            signInWithPopup, 
-            signInWithRedirect,
-            signInWithCredential,
-            getRedirectResult,
-            signOut,
-            onAuthStateChanged 
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { 
-            getFirestore, 
-            doc, 
-            getDoc, 
-            setDoc, 
-            deleteDoc,
-            updateDoc,
-            onSnapshot,
-            serverTimestamp 
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+<div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-        // Your Firebase config
-        const firebaseConfig = {
-            apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
-            authDomain: "lunchkod1239123.firebaseapp.com",
-            projectId: "lunchkod1239123",
-            storageBucket: "lunchkod1239123.firebasestorage.app",
-            messagingSenderId: "198521085351",
-            appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
-        };
+<main id="app">
+  <div class="brand" aria-hidden="false">
+    <h1>🍽️ Lunchpoäng</h1>
+    <p>Din dagliga QR-biljett — snabbt, säkert, klart.</p>
+  </div>
 
-        // Initialize Firebase
-        console.log('🔧 Initializing Firebase...');
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-        console.log('✅ Firebase initialized');
-        console.log('⌚ Watch detection:', isWatch() ? 'WATCH DETECTED' : 'Not a watch');
-        
-        // Apply watch class on load if needed
-        if (isWatch()) {
-            document.body.classList.add('watch-mode');
-        }
-
-        // UI Elements
-        const authContainer = document.getElementById('auth-container');
-        const consentContainer = document.getElementById('consent-container');
-        const qrContainer = document.getElementById('qr-container');
-        const loading = document.getElementById('loading');
-        const userInfo = document.getElementById('user-info');
-        const qrImg = document.getElementById('qr');
-        const dateDisplay = document.getElementById('date-display');
-        
-        let currentUser = null;
-        let currentGoogleId = null;
-        let isProcessingRedirect = false;
-        let pairingUnsubscribe = null;
-        let currentPairingCode = null;
-
-        // Check for saved device token and load from Firestore
-        async function checkSavedDeviceToken() {
-            console.log('🔍 Checking for saved device token...');
-            try {
-                const deviceToken = localStorage.getItem('watchDeviceToken');
-                console.log('📦 Device token:', deviceToken ? 'found' : 'not found');
-                
-                if (!deviceToken) {
-                    return null;
-                }
-                
-                // Look up token in Firestore
-                const tokenRef = doc(db, 'device_tokens', deviceToken);
-                const tokenDoc = await getDoc(tokenRef);
-                
-                if (tokenDoc.exists()) {
-                    const data = tokenDoc.data();
-                    console.log('✅ Found device token in Firestore:', data.email);
-                    return {
-                        googleId: data.googleId,
-                        email: data.email,
-                        displayName: data.displayName,
-                        uid: data.userId,
-                        token: deviceToken
-                    };
-                } else {
-                    console.log('❌ Token not found in Firestore, clearing local storage');
-                    localStorage.removeItem('watchDeviceToken');
-                }
-            } catch (e) {
-                console.log('❌ Error checking device token:', e);
-            }
-            return null;
-        }
-
-        // Save device token to Firestore and localStorage
-        async function saveDeviceToken(userData) {
-            try {
-                // Generate unique token
-                const deviceToken = 'WD-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                
-                // Save to Firestore (never expires)
-                const tokenRef = doc(db, 'device_tokens', deviceToken);
-                await setDoc(tokenRef, {
-                    userId: userData.uid,
-                    googleId: userData.googleId,
-                    email: userData.email,
-                    displayName: userData.displayName,
-                    createdAt: serverTimestamp(),
-                    deviceInfo: navigator.userAgent
-                });
-                
-                // Save token ID locally
-                localStorage.setItem('watchDeviceToken', deviceToken);
-                console.log('💾 Device token saved:', deviceToken);
-                return deviceToken;
-            } catch (e) {
-                console.error('❌ Error saving device token:', e);
-                return null;
-            }
-        }
-
-        // Clear device token
-        async function clearDeviceToken() {
-            try {
-                const deviceToken = localStorage.getItem('watchDeviceToken');
-                if (deviceToken) {
-                    // Delete from Firestore
-                    await deleteDoc(doc(db, 'device_tokens', deviceToken));
-                    localStorage.removeItem('watchDeviceToken');
-                    console.log('🗑️ Device token cleared');
-                }
-            } catch (e) {
-                console.error('Error clearing device token:', e);
-            }
-        }
-
-        // Detect if device is a smartwatch
-        function isWatch() {
-            const ua = navigator.userAgent.toLowerCase();
-            // Check for watch-specific identifiers (including Samsung/Galaxy)
-            return /wear os|wearos|tizen|watch|galaxy watch|apple watch|watchos|samsung.*sm-r|samsung.*watch/i.test(ua) || 
-                   // Also check for very small screens that are likely watches
-                   (window.innerWidth <= 450 && window.innerHeight <= 450 && /android/i.test(ua));
-        }
-
-        // Handle redirect result on page load
-        console.log('🔄 Checking for redirect result...');
-        isProcessingRedirect = true;
-        
-        // Safety timeout - if redirect processing takes too long, allow auth state to take over
-        setTimeout(() => {
-            if (isProcessingRedirect) {
-                console.log('⏰ Redirect processing timeout - allowing auth state listener to proceed');
-                isProcessingRedirect = false;
-            }
-        }, 5000);
-        
-        getRedirectResult(auth).then(async (result) => {
-            console.log('📋 Redirect result received:', result ? 'Has user' : 'No user');
-            
-            if (result && result.user) {
-                console.log('✅ Redirect result found:', result.user.email);
-                const hasConsented = await checkConsent(result.user);
-                if (hasConsented) {
-                    const googleProvider = result.user.providerData.find(p => p.providerId === 'google.com');
-                    currentGoogleId = googleProvider?.uid || result.user.uid;
-                    await updateDoc(doc(db, 'user_consents', result.user.uid), {
-                        lastUsed: serverTimestamp()
-                    });
-                    showQR(result.user);
-                } else {
-                    showConsent(result.user);
-                }
-            } else {
-                console.log('ℹ️ No redirect result (normal if not coming from redirect)');
-            }
-            isProcessingRedirect = false;
-        }).catch((error) => {
-            console.error('❌ Redirect error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            isProcessingRedirect = false;
-            
-            // Don't show alert for certain errors
-            if (error.code !== 'auth/null-user') {
-                alert('Sign in failed: ' + error.message);
-            }
-            showLogin();
-        });
-
-        // Test function for debugging
-        window.testStorage = async function() {
-            console.log('🧪 Testing storage...');
-            try {
-                localStorage.setItem('test', 'hello');
-                const result = localStorage.getItem('test');
-                console.log('✅ localStorage works:', result);
-                localStorage.removeItem('test');
-                
-                const deviceToken = localStorage.getItem('watchDeviceToken');
-                console.log('📦 Device token in storage:', deviceToken ? deviceToken : 'not found');
-                
-                if (deviceToken) {
-                    // Check Firestore
-                    const tokenRef = doc(db, 'device_tokens', deviceToken);
-                    const tokenDoc = await getDoc(tokenRef);
-                    if (tokenDoc.exists()) {
-                        console.log('✅ Token found in Firestore:', tokenDoc.data());
-                    } else {
-                        console.log('❌ Token NOT found in Firestore');
-                    }
-                }
-            } catch (e) {
-                console.error('❌ Storage error:', e);
-            }
-        };
-        
-        // Force login from device token (emergency function)
-        window.forceLogin = async function() {
-            const saved = await checkSavedDeviceToken();
-            if (saved) {
-                currentGoogleId = saved.googleId;
-                showQR({
-                    displayName: saved.displayName,
-                    email: saved.email,
-                    uid: saved.uid
-                });
-                console.log('✅ Forced login from device token');
-            } else {
-                console.log('❌ No device token to force login');
-            }
-        };
-        
-        // Quick check for watch auto-login on page load
-        if (isWatch()) {
-            console.log('⌚ Watch detected, checking for device token...');
-            const deviceToken = localStorage.getItem('watchDeviceToken');
-            if (deviceToken) {
-                console.log('✅ Found device token:', deviceToken);
-            } else {
-                console.log('🔓 No device token found');
-            }
-        }
-
-        // Generate QR code with user ID
-        function generateQR(userId) {
-            const now = new Date();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            
-            const fullString = `:${month}${day};${userId}`;
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
-            
-            qrImg.src = qrUrl;
-            dateDisplay.innerText = `${month}/${day}`;
-        }
-
-        // Show QR view
-        function showQR(user) {
-            console.log('🎯 showQR called with user:', user?.email, 'googleId:', currentGoogleId);
-            
-            try {
-                consentContainer.style.display = 'none';
-                authContainer.style.display = 'none';
-                loading.style.display = 'none';
-                qrContainer.style.display = 'flex';
-                document.getElementById('pairing-container').style.display = 'none';
-                
-                userInfo.innerHTML = `
-                    <h3>${user.displayName || 'User'}</h3>
-                    <p>${user.email}</p>
-                `;
-                
-                if (!currentGoogleId) {
-                    console.error('❌ No googleId set!');
-                    document.getElementById('pairing-status').textContent = 'Error: No Google ID';
-                    return;
-                }
-                
-                // Check if on watch and adjust UI
-                const watchMode = isWatch();
-                console.log('⌚ Watch mode:', watchMode);
-                
-                const pairingSection = document.getElementById('pairing-section');
-                const logoutBtn = qrContainer.querySelector('.logout-btn');
-                const deleteBtn = qrContainer.querySelector('.delete-btn');
-                
-                if (watchMode) {
-                    // Add watch class to body for CSS
-                    document.body.classList.add('watch-mode');
-                    // Hide pairing section on watch
-                    if (pairingSection) pairingSection.style.display = 'none';
-                    // Position user info as overlay
-                    if (userInfo) {
-                        userInfo.style.position = 'absolute';
-                        userInfo.style.top = '5px';
-                        userInfo.style.left = '50%';
-                        userInfo.style.transform = 'translateX(-50%)';
-                        userInfo.style.background = 'rgba(0,0,0,0.8)';
-                        userInfo.style.padding = '3px 8px';
-                        userInfo.style.borderRadius = '10px';
-                        userInfo.style.zIndex = '100';
-                    }
-                    // Position logout button bottom right
-                    if (logoutBtn) {
-                        logoutBtn.style.position = 'absolute';
-                        logoutBtn.style.bottom = '5px';
-                        logoutBtn.style.right = '5px';
-                        logoutBtn.style.padding = '2px 6px';
-                        logoutBtn.style.fontSize = '7px';
-                        logoutBtn.style.zIndex = '100';
-                        logoutBtn.style.background = 'rgba(0,0,0,0.8)';
-                        logoutBtn.style.color = 'white';
-                        logoutBtn.style.border = '1px solid rgba(255,255,255,0.3)';
-                    }
-                    if (deleteBtn) deleteBtn.style.display = 'none';
-                    // Make qr container position relative for absolute children
-                    if (qrContainer) {
-                        qrContainer.style.position = 'relative';
-                    }
-                } else {
-                    // Remove watch class
-                    document.body.classList.remove('watch-mode');
-                    // Show pairing section on desktop
-                    if (pairingSection) pairingSection.style.display = 'block';
-                    // Reset user info styles
-                    if (userInfo) {
-                        userInfo.style.position = '';
-                        userInfo.style.top = '';
-                        userInfo.style.left = '';
-                        userInfo.style.transform = '';
-                        userInfo.style.background = '';
-                        userInfo.style.padding = '';
-                        userInfo.style.borderRadius = '';
-                        userInfo.style.zIndex = '';
-                    }
-                    // Reset logout button styles
-                    if (logoutBtn) {
-                        logoutBtn.style.position = '';
-                        logoutBtn.style.bottom = '';
-                        logoutBtn.style.right = '';
-                        logoutBtn.style.padding = '';
-                        logoutBtn.style.fontSize = '';
-                        logoutBtn.style.zIndex = '';
-                        logoutBtn.style.background = '';
-                        logoutBtn.style.color = '';
-                        logoutBtn.style.border = '';
-                    }
-                    // Reset qr container
-                    if (qrContainer) {
-                        qrContainer.style.position = '';
-                    }
-                    if (deleteBtn) deleteBtn.style.display = 'block';
-                }
-                
-                generateQR(currentGoogleId);
-                console.log('✅ QR displayed successfully');
-            } catch (error) {
-                console.error('❌ Error in showQR:', error);
-                document.getElementById('pairing-status').textContent = 'Error displaying QR';
-            }
-        }
-
-        // Show consent view
-        function showConsent(user) {
-            authContainer.style.display = 'none';
-            qrContainer.style.display = 'none';
-            loading.style.display = 'none';
-            consentContainer.style.display = 'flex';
-            consentContainer.style.flexDirection = 'column';
-        }
-
-        // Show login view
-        function showLogin() {
-            console.log('👤 Showing login view');
-            consentContainer.style.display = 'none';
-            authContainer.style.display = 'flex';
-            loading.style.display = 'none';
-            qrContainer.style.display = 'none';
-            document.getElementById('pairing-container').style.display = 'none';
-            
-            // Cancel any active pairing
-            if (pairingUnsubscribe) {
-                pairingUnsubscribe();
-                pairingUnsubscribe = null;
-            }
-            
-            // Always show both options - let user choose
-            const watchBtn = document.getElementById('watch-pair-btn');
-            if (watchBtn) {
-                watchBtn.style.display = 'block';
-            }
-        }
-
-        // Cancel pairing
-        window.cancelPairing = async function() {
-            if (currentPairingCode) {
-                try {
-                    await deleteDoc(doc(db, 'pairing_codes', currentPairingCode));
-                } catch (e) {
-                    console.log('Error deleting pairing code:', e);
-                }
-                currentPairingCode = null;
-            }
-            
-            if (pairingUnsubscribe) {
-                pairingUnsubscribe();
-                pairingUnsubscribe = null;
-            }
-            
-            showLogin();
-        };
-
-        // Check if user has already consented
-        async function checkConsent(user) {
-            try {
-                const consentDoc = await getDoc(doc(db, 'user_consents', user.uid));
-                return consentDoc.exists();
-            } catch (error) {
-                console.error('Error checking consent:', error);
-                return false;
-            }
-        }
-
-        // Save consent to Firestore
-        async function saveConsent(user) {
-            try {
-                const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
-                const googleId = googleProvider?.uid || user.uid;
-                currentGoogleId = googleId;
-                
-                await setDoc(doc(db, 'user_consents', user.uid), {
-                    googleId: googleId,
-                    email: user.email,
-                    displayName: user.displayName,
-                    consentedAt: serverTimestamp(),
-                    lastUsed: serverTimestamp()
-                });
-                
-                console.log('✅ Consent saved for:', user.email);
-                return true;
-            } catch (error) {
-                console.error('Error saving consent:', error);
-                return false;
-            }
-        }
-
-        // Google Sign In (via Firebase Auth - bypasses origin issues)
-        window.signInWithGoogle = function() {
-            loading.style.display = 'block';
-            authContainer.style.display = 'none';
-            
-            // Use Firebase Auth directly (works with firebaseapp.com domain)
-            fallbackSignInWithGoogle();
-        };
-
-        // Fallback traditional sign in
-        async function fallbackSignInWithGoogle() {
-            try {
-                const isSmallScreen = window.innerWidth <= 500 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
-                
-                if (isSmallScreen) {
-                    console.log('📲 Small screen detected, using signInWithRedirect');
-                    await signInWithRedirect(auth, provider);
-                } else {
-                    console.log('💻 Desktop detected, using signInWithPopup');
-                    const result = await signInWithPopup(auth, provider);
-                    await handleLoginSuccess(result.user);
-                }
-            } catch (error) {
-                console.error('Sign in error:', error);
-                showLogin();
-                alert('Sign in failed: ' + error.message);
-            }
-        }
-
-        // Handle Google One Tap response
-        async function handleGoogleResponse(response) {
-            loading.style.display = 'block';
-            
-            try {
-                // Create Firebase credential from Google ID Token
-                const credential = GoogleAuthProvider.credential(response.credential);
-                const result = await signInWithCredential(auth, credential);
-                
-                console.log('✅ One Tap login successful:', result.user.email);
-                await handleLoginSuccess(result.user);
-            } catch (error) {
-                console.error('❌ Firebase Auth failed:', error);
-                loading.style.display = 'none';
-                showLogin();
-                alert('Sign in failed: ' + error.message);
-            }
-        }
-
-        // Common login success handler
-        async function handleLoginSuccess(user) {
-            currentUser = user;
-            
-            // Check if user has already consented
-            const hasConsented = await checkConsent(user);
-            
-            if (hasConsented) {
-                // Get their Google ID and show QR
-                const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
-                currentGoogleId = googleProvider?.uid || user.uid;
-                
-                // Update last used timestamp
-                await updateDoc(doc(db, 'user_consents', user.uid), {
-                    lastUsed: serverTimestamp()
-                });
-                
-                // Save device token for watches to enable auto-login
-                if (isWatch()) {
-                    console.log('⌚ Watch detected, saving device token for auto-login');
-                    await saveDeviceToken({
-                        googleId: currentGoogleId,
-                        email: user.email,
-                        displayName: user.displayName,
-                        uid: user.uid
-                    });
-                }
-                
-                showQR(user);
-            } else {
-                // Show consent screen
-                showConsent(user);
-            }
-        }
-
-        // Generate random 6-digit pairing code
-        function generatePairingCode() {
-            return Math.floor(100000 + Math.random() * 900000).toString();
-        }
-
-        // Show pairing code view (for watch) - make global
-        window.showPairingCode = async function() {
-            loading.style.display = 'none';
-            authContainer.style.display = 'none';
-            consentContainer.style.display = 'none';
-            qrContainer.style.display = 'none';
-            document.getElementById('pairing-container').style.display = 'flex';
-            
-            // Generate and display code
-            currentPairingCode = generatePairingCode();
-            document.getElementById('pairing-code-display').textContent = currentPairingCode;
-            
-            // Create pairing document in Firestore
-            const pairingRef = doc(db, 'pairing_codes', currentPairingCode);
-            await setDoc(pairingRef, {
-                code: currentPairingCode,
-                status: 'waiting',
-                createdAt: serverTimestamp(),
-                deviceInfo: navigator.userAgent
-            });
-            
-            console.log('🔑 Pairing code created:', currentPairingCode);
-            
-            // Listen for pairing completion
-            console.log('👂 Setting up pairing listener for code:', currentPairingCode);
-            pairingUnsubscribe = onSnapshot(pairingRef, async (snapshot) => {
-                console.log('📡 Snapshot received, exists:', snapshot.exists());
-                
-                if (!snapshot.exists()) {
-                    console.log('❌ Pairing doc does not exist');
-                    return;
-                }
-                
-                const data = snapshot.data();
-                console.log('📡 Pairing update:', data.status, data);
-                
-                if (data.status === 'paired' && data.userId) {
-                    // User has paired! Get their info
-                    console.log('✅ Device paired with user:', data.userEmail);
-                    console.log('✅ Google ID:', data.googleId);
-                    
-                    // Clean up
-                    if (pairingUnsubscribe) {
-                        pairingUnsubscribe();
-                        pairingUnsubscribe = null;
-                    }
-                    
-                    // Show paired message
-                    document.getElementById('pairing-code-display').style.display = 'none';
-                    document.getElementById('pairing-instructions').style.display = 'none';
-                    document.getElementById('pairing-status').textContent = 'Connected! Loading...';
-                    document.getElementById('pairing-status').style.color = '#4CAF50';
-                    
-                    // Phone has already verified consent, just show QR directly
-                    currentGoogleId = data.googleId;
-                    // Create a mock user object for display
-                    const mockUser = {
-                        displayName: data.userName,
-                        email: data.userEmail,
-                        uid: data.userId
-                    };
-                    console.log('🎯 Calling showQR with:', mockUser);
-                    
-                    // Save device token for future auto-login
-                    await saveDeviceToken({
-                        googleId: data.googleId,
-                        email: data.userEmail,
-                        displayName: data.userName,
-                        uid: data.userId
-                    });
-                    
-                    showQR(mockUser);
-                    console.log('✅ showQR called');
-                    
-                    // Clean up pairing doc after a delay
-                    setTimeout(async () => {
-                        try {
-                            await deleteDoc(pairingRef);
-                        } catch (e) {
-                            console.log('Error cleaning up pairing doc:', e);
-                        }
-                    }, 5000);
-                }
-            }, (error) => {
-                console.error('❌ Pairing listener error:', error);
-            });
-            
-            // Auto-expire after 5 minutes
-            setTimeout(async () => {
-                if (pairingUnsubscribe) {
-                    pairingUnsubscribe();
-                    pairingUnsubscribe = null;
-                    
-                    // Check if still waiting
-                    const currentDoc = await getDoc(pairingRef);
-                    if (currentDoc.exists() && currentDoc.data().status === 'waiting') {
-                        await deleteDoc(pairingRef);
-                        document.getElementById('pairing-status').textContent = 'Code expired. Please try again.';
-                        document.getElementById('pairing-status').style.color = '#f44336';
-                        
-                        setTimeout(() => {
-                            showLogin();
-                        }, 2000);
-                    }
-                }
-            }, 300000); // 5 minutes
-        }
-
-        // Manual check for pairing status (fallback)
-        window.manualCheckPairing = async function() {
-            if (!currentPairingCode) {
-                console.log('❌ No pairing code to check');
-                return;
-            }
-            
-            console.log('🔍 Manual check for pairing code:', currentPairingCode);
-            document.getElementById('pairing-status').textContent = 'Checking...';
-            
-            try {
-                const pairingRef = doc(db, 'pairing_codes', currentPairingCode);
-                const pairingDoc = await getDoc(pairingRef);
-                
-                if (!pairingDoc.exists()) {
-                    document.getElementById('pairing-status').textContent = 'Code not found or expired';
-                    document.getElementById('pairing-status').style.color = '#f44336';
-                    return;
-                }
-                
-                const data = pairingDoc.data();
-                console.log('📋 Manual check - pairing data:', data);
-                
-                if (data.status === 'paired' && data.userId) {
-                    console.log('✅ Found paired data!');
-                    
-                    // Stop listening
-                    if (pairingUnsubscribe) {
-                        pairingUnsubscribe();
-                        pairingUnsubscribe = null;
-                    }
-                    
-                    // Show paired message
-                    document.getElementById('pairing-code-display').style.display = 'none';
-                    document.getElementById('pairing-instructions').style.display = 'none';
-                    document.getElementById('pairing-status').textContent = 'Connected! Loading...';
-                    document.getElementById('pairing-status').style.color = '#4CAF50';
-                    
-                    // Show QR
-                    currentGoogleId = data.googleId;
-                    const mockUser = {
-                        displayName: data.userName,
-                        email: data.userEmail,
-                        uid: data.userId
-                    };
-                    
-                    // Save device token for future auto-login
-                    await saveDeviceToken({
-                        googleId: data.googleId,
-                        email: data.userEmail,
-                        displayName: data.userName,
-                        uid: data.userId
-                    });
-                    
-                    showQR(mockUser);
-                    
-                    // Clean up
-                    setTimeout(async () => {
-                        try {
-                            await deleteDoc(pairingRef);
-                        } catch (e) {
-                            console.log('Error cleaning up:', e);
-                        }
-                    }, 5000);
-                } else {
-                    document.getElementById('pairing-status').textContent = 'Still waiting...';
-                    document.getElementById('pairing-status').style.color = 'white';
-                }
-            } catch (error) {
-                console.error('❌ Manual check error:', error);
-                document.getElementById('pairing-status').textContent = 'Error checking. Try again.';
-                document.getElementById('pairing-status').style.color = '#f44336';
-            }
-        };
-
-        // Show pairing entry view (for phone) - make global
-        window.showPairingEntry = function() {
-            loading.style.display = 'none';
-            authContainer.style.display = 'none';
-            consentContainer.style.display = 'none';
-            qrContainer.style.display = 'none';
-            document.getElementById('pairing-entry-container').style.display = 'flex';
-        }
-
-        // Handle pairing code submission (when already logged in)
-        window.submitPairingCode = async function() {
-            const codeInput = document.getElementById('pairing-code-input');
-            const code = codeInput.value.trim();
-            
-            console.log('📱 Submitting pairing code:', code);
-            
-            if (code.length !== 6 || !/^\d+$/.test(code)) {
-                alert('Please enter a valid 6-digit code');
-                return;
-            }
-            
-            if (!currentUser) {
-                alert('Please sign in first before linking a watch');
-                return;
-            }
-            
-            try {
-                // Check if code exists
-                const pairingRef = doc(db, 'pairing_codes', code);
-                console.log('🔍 Checking pairing doc:', code);
-                const pairingDoc = await getDoc(pairingRef);
-                
-                if (!pairingDoc.exists()) {
-                    console.log('❌ Pairing doc not found');
-                    alert('Invalid or expired code. Please check and try again.');
-                    codeInput.value = '';
-                    return;
-                }
-                
-                const pairingData = pairingDoc.data();
-                console.log('📋 Pairing data:', pairingData);
-                
-                if (pairingData.status !== 'waiting') {
-                    alert('This code has already been used.');
-                    codeInput.value = '';
-                    return;
-                }
-                
-                // Get Google ID
-                const googleProvider = currentUser.providerData.find(p => p.providerId === 'google.com');
-                const googleId = googleProvider?.uid || currentUser.uid;
-                
-                console.log('📝 Updating pairing doc with user info...');
-                // Update pairing document with user info
-                await updateDoc(pairingRef, {
-                    status: 'paired',
-                    userId: currentUser.uid,
-                    userEmail: currentUser.email,
-                    userName: currentUser.displayName,
-                    googleId: googleId,
-                    pairedAt: serverTimestamp()
-                });
-                
-                console.log('✅ Pairing doc updated successfully');
-                alert('Watch linked successfully!');
-                codeInput.value = '';
-                
-            } catch (error) {
-                console.error('❌ Pairing error:', error);
-                alert('Error linking watch: ' + error.message);
-            }
-        };
-
-
-
-        // Handle consent agreement
-        window.agreeConsent = async function() {
-            if (!currentUser) return;
-            
-            loading.style.display = 'block';
-            consentContainer.style.display = 'none';
-            
-            const saved = await saveConsent(currentUser);
-            
-            if (saved) {
-                // Save device token for watches to enable auto-login
-                if (isWatch()) {
-                    console.log('⌚ Watch detected, saving device token after consent');
-                    await saveDeviceToken({
-                        googleId: currentGoogleId,
-                        email: currentUser.email,
-                        displayName: currentUser.displayName,
-                        uid: currentUser.uid
-                    });
-                }
-                showQR(currentUser);
-            } else {
-                alert('Failed to save consent. Please try again.');
-                showConsent(currentUser);
-            }
-        };
-
-        // Handle consent decline
-        window.declineConsent = async function() {
-            if (!currentUser) return;
-            
-            // Sign them out
-            await signOut(auth);
-            currentUser = null;
-            currentGoogleId = null;
-            alert('Consent is required to access your lunch ticket. You have been signed out.');
-            showLogin();
-        };
-
-        // Delete user data
-        window.deleteMyData = async function() {
-            if (!currentUser) return;
-            
-            if (!confirm('Are you sure you want to delete your data? You will need to consent again to use the lunch ticket.')) {
-                return;
-            }
-            
-            try {
-                await deleteDoc(doc(db, 'user_consents', currentUser.uid));
-                console.log('User data deleted:', currentUser.email);
-                
-                // Sign them out
-                await signOut(auth);
-                currentUser = null;
-                currentGoogleId = null;
-                await clearDeviceToken(); // Clear device token
-                alert('Your data has been deleted. You have been signed out.');
-                showLogin();
-            } catch (error) {
-                console.error('Error deleting data:', error);
-                alert('Failed to delete data. Please try again.');
-            }
-        };
-
-        // Sign Out
-        window.signOutUser = async function() {
-            try {
-                await signOut(auth);
-                currentUser = null;
-                currentGoogleId = null;
-                await clearDeviceToken(); // Clear device token
-                showLogin();
-            } catch (error) {
-                console.error('Sign out error:', error);
-            }
-        };
-
-        // Listen for auth state changes
-        console.log('👂 Setting up auth state listener...');
-        onAuthStateChanged(auth, async (user) => {
-            if (isProcessingRedirect) {
-                console.log('⏳ Auth state changed but redirect still processing, waiting...');
-                return;
-            }
-            
-            if (user) {
-                currentUser = user;
-                console.log('🔄 Auth state changed: LOGGED IN as', user.email);
-                console.log('🔄 User UID:', user.uid);
-                
-                // Check if they've consented
-                const hasConsented = await checkConsent(user);
-                
-                if (hasConsented) {
-                    const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
-                    currentGoogleId = googleProvider?.uid || user.uid;
-                    console.log('✅ User has consented, showing QR');
-                    showQR(user);
-                } else {
-                    console.log('⚠️ User has not consented, showing consent screen');
-                    showConsent(user);
-                }
-            } else {
-                currentUser = null;
-                currentGoogleId = null;
-                console.log('🔄 Auth state changed: NOT LOGGED IN');
-                
-                // Check for saved device token (auto-login for watches)
-                console.log('🔍 Checking device token...');
-                const savedToken = await checkSavedDeviceToken();
-                console.log('🔍 Device token result:', savedToken ? 'FOUND' : 'NOT FOUND');
-                if (savedToken) {
-                    console.log('📱 Auto-logging in from device token for:', savedToken.email);
-                    currentGoogleId = savedToken.googleId;
-                    showQR({
-                        displayName: savedToken.displayName,
-                        email: savedToken.email,
-                        uid: savedToken.uid
-                    });
-                } else {
-                    console.log('🔓 No device token, showing login');
-                    showLogin();
-                }
-            }
-        });
-    </script>
-
-    <!-- Loading State -->
-    <div id="loading" style="display: none;">Loading...</div>
-
-    <!-- Auth View -->
-    <div id="auth-container">
-        <button class="google-btn" onclick="signInWithGoogle()">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-            Sign in with Google
-        </button>
-        <button class="use-pairing-btn" onclick="showPairingCode()" id="watch-pair-btn">
-            I'm on a watch (Get code)
-        </button>
+  <!-- Loading -->
+  <section id="view-loading" class="view active" aria-label="Laddar">
+    <div class="card secondary">
+      <div class="loader" aria-hidden="true"></div>
+      <h2 style="color:#fff; font-size:14px; font-weight:600; margin: 4px 0 0">Laddar…</h2>
+      <p class="muted" style="color:rgba(255,255,255,.6)">Kontrollerar inloggning</p>
     </div>
+  </section>
 
-    <!-- Pairing Code View (shown on watch) -->
-    <div id="pairing-container">
-        <div id="pairing-code-display" class="pairing-code">000000</div>
-        <p id="pairing-instructions" class="pairing-instructions">
-            Sign in on your phone first,<br>
-            then enter this code on your QR page
-        </p>
-        <div id="pairing-status" class="pairing-status">Waiting for phone...</div>
-        <button class="back-btn" onclick="manualCheckPairing()" style="margin-top: 10px;">Check Connection</button>
-        <button class="back-btn" onclick="cancelPairing()">Cancel</button>
+  <!-- Auth -->
+  <section id="view-auth" class="view" aria-label="Logga in">
+    <div class="card">
+      <div class="kicker">Välkommen</div>
+      <h2>Logga in för att visa din biljett</h2>
+      <p class="muted">Vi använder Google-inloggning för att knyta din QR-kod till dig. Ingen reklam, inget krångel.</p>
+      <button id="btn-signin" class="btn btn-ghost" type="button">
+        <svg class="google-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C34.7 32.1 29.7 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.1 29.4 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20.5-7.5 20.5-21 0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.1 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l6-6C34.5 5.1 29.4 3 24 3 16.3 3 9.6 7.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.3 0 10.4-1.9 14.1-5.2l-6.5-5.2C29.7 36 26.9 37.5 24 37.5c-5.6 0-10.3-3.7-12-8.7l-6.6 5.1C8.7 41 15.7 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 2.8-2.9 5.2-5.7 6.8l6.5 5.2C40.3 36.6 44 31.1 44 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+        Fortsätt med Google
+      </button>
+      <button id="btn-watch" class="btn btn-soft btn-small" type="button">⌚ Jag är på klocka — visa kod</button>
+      <p class="muted"><small>Genom att logga in godkänner du att vi sparar ditt Google-ID för felsökning. <a href="#" id="link-consent-preview" style="color:var(--accent)">Läs mer</a></small></p>
     </div>
-
-    <!-- Consent View -->
-    <div id="consent-container">
-        <h2>Help Desk Access</h2>
-        <p>We store your Google ID to help debug lunch ticket issues.</p>
-        <p>Data stored: Google ID, Email, Consent timestamp</p>
-        <p>Data retained indefinitely. You can delete your data anytime.</p>
-        <button class="consent-btn" onclick="agreeConsent()">I Agree & Continue</button>
-        <button class="cancel-btn" onclick="declineConsent()">Cancel</button>
+    <div class="card secondary" style="padding:14px">
+      <p class="muted" style="color:rgba(255,255,255,.7); font-size:12px; margin:0">Har du problem att logga in? Prova inkognito, tillåt popups, eller använd “klocka”-läget för att para via telefon.</p>
     </div>
+  </section>
 
-    <!-- QR View -->
-    <div id="user-info"></div>
-    <div id="qr-container">
-        <img id="qr" src="" alt="QR Code" />
-        <div id="date-display"></div>
-        <div id="pairing-section" class="pairing-section-desktop" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; width: 100%;">
-            <p style="color: #666; font-size: 12px; margin: 0 0 10px 0;">Connect a watch</p>
-            <input type="text" id="pairing-code-input" class="pairing-input" placeholder="000000" maxlength="6" pattern="\d*" style="width: 100px; font-size: 18px; padding: 8px;">
-            <button class="pair-btn" onclick="submitPairingCode()" style="padding: 8px 16px; font-size: 12px; margin-top: 5px;">Link Watch</button>
+  <!-- Consent -->
+  <section id="view-consent" class="view" aria-label="Godkänn villkor">
+    <div class="card">
+      <div class="kicker">Ett snabbt godkännande</div>
+      <h2>Hjälp oss felsöka — vi sparar minimalt</h2>
+      <p class="muted">För att din biljett ska fungera sparar vi bara det som behövs för support.</p>
+      <ul class="consent-list">
+        <li><span class="dot"></span><span><strong>Google-ID</strong> — identifierar din biljett vid skanning</span></li>
+        <li><span class="dot"></span><span><strong>E-post & namn</strong> — för att hitta ditt konto vid fel</span></li>
+        <li><span class="dot"></span><span><strong>Tidstämplar</strong> — när du gav samtycke och senast använde biljetten</span></li>
+      </ul>
+      <p class="muted"><small>Utan samtycke kan vi inte skapa din QR. Du kan radera allt när som helst under “Radera min data”.</small></p>
+      <button id="btn-agree" class="btn btn-accent" type="button">Jag godkänner & visar biljetten</button>
+      <button id="btn-decline" class="btn btn-ghost" type="button">Avbryt och logga ut</button>
+    </div>
+  </section>
+
+  <!-- QR -->
+  <section id="view-qr" class="view" aria-label="Din QR-kod">
+    <div id="qr-card" class="card">
+      <div class="user-chip" id="user-chip">
+        <div class="avatar" id="avatar">?</div>
+        <div class="user-meta">
+          <strong id="user-name">—</strong>
+          <span id="user-email">—</span>
         </div>
-        <button class="logout-btn" onclick="signOutUser()">Sign Out</button>
-        <button class="delete-btn" onclick="deleteMyData()">Delete My Data</button>
+        <span class="date-badge" id="date-badge">--/--</span>
+      </div>
+
+      <div class="qr-wrap" id="qr-wrap" aria-label="QR-kod"></div>
+
+      <div class="qr-foot">
+        <span class="muted" style="font-size:12px">Gäller idag • <span id="date-long">—</span></span>
+        <span class="status" id="qr-status" style="display:none"></span>
+      </div>
+
+      <div class="qr-actions">
+        <button id="btn-copy-id" class="btn btn-ghost btn-small" type="button" title="Kopiera QR-innehåll">Kopiera kod</button>
+        <button id="btn-download" class="btn btn-ghost btn-small" type="button">Ladda ner</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="display:flex; align-items:center; justify-content:space-between">
+          <span class="kicker" style="margin:0">Para klocka</span>
+          <span class="muted" style="font-size:11px">6 siffror från klockan</span>
+        </div>
+        <div class="pair-row">
+          <input id="pair-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="123456" aria-label="Parningskod">
+          <button id="btn-pair" class="btn btn-accent btn-small" style="width:auto; white-space:nowrap" type="button">Länka</button>
+        </div>
+      </div>
+
+      <div class="qr-actions" style="margin-top:2px">
+        <button id="btn-signout" class="btn btn-ghost btn-small" type="button">Logga ut</button>
+        <button id="btn-delete" class="link-btn danger" type="button">Radera min data</button>
+      </div>
     </div>
+  </section>
+
+  <!-- Pairing -->
+  <section id="view-pairing" class="view" aria-label="Parkoppling">
+    <div class="card secondary" style="border:none; background:rgba(255,255,255,.07)">
+      <div class="kicker" style="color:rgba(255,255,255,.7)">Klockläge</div>
+      <div id="pair-code" class="code-big">------</div>
+      <p class="muted" style="color:rgba(255,255,255,.75); max-width:32ch">1. Logga in på telefon/dator.<br>2. Skriv in koden ovan under “Para klocka”.</p>
+      <span id="pair-status" class="status">Väntar på telefon…</span>
+      <div style="display:flex; gap:8px; width:100%; max-width:320px">
+        <button id="btn-pair-check" class="btn btn-soft btn-small" type="button">Kontrollera</button>
+        <button id="btn-pair-cancel" class="btn btn-ghost btn-small" type="button" style="background:rgba(255,255,255,.9)">Avbryt</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<p class="foot">Behöver hjälp? <a href="./admin.html">Admin</a> • Lagras i Firestore • <span id="foot-version">v3</span></p>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+  getRedirectResult, signOut, onAuthStateChanged
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {
+  getFirestore, doc, getDoc, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ---- config ----
+const firebaseConfig = {
+  apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
+  authDomain: "lunchkod1239123.firebaseapp.com",
+  projectId: "lunchkod1239123",
+  storageBucket: "lunchkod1239123.firebasestorage.app",
+  messagingSenderId: "198521085351",
+  appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
+
+// ---- dom ----
+const $ = s => document.getElementById(s);
+const views = {
+  loading: $('view-loading'),
+  auth: $('view-auth'),
+  consent: $('view-consent'),
+  qr: $('view-qr'),
+  pairing: $('view-pairing'),
+};
+const els = {
+  btnSignin: $('btn-signin'),
+  btnWatch: $('btn-watch'),
+  btnAgree: $('btn-agree'),
+  btnDecline: $('btn-decline'),
+  btnSignout: $('btn-signout'),
+  btnDelete: $('btn-delete'),
+  btnPair: $('btn-pair'),
+  pairInput: $('pair-input'),
+  userName: $('user-name'),
+  userEmail: $('user-email'),
+  avatar: $('avatar'),
+  dateBadge: $('date-badge'),
+  dateLong: $('date-long'),
+  qrWrap: $('qr-wrap'),
+  qrStatus: $('qr-status'),
+  btnCopy: $('btn-copy-id'),
+  btnDownload: $('btn-download'),
+  pairCode: $('pair-code'),
+  pairStatus: $('pair-status'),
+  btnPairCheck: $('btn-pair-check'),
+  btnPairCancel: $('btn-pair-cancel'),
+  linkConsent: $('link-consent-preview'),
+};
+
+let state = {
+  user: null,
+  googleId: null,
+  pairingCode: null,
+  pairingUnsub: null,
+  lastQRText: '',
+  redirectHandled: false,
+};
+
+// ---- helpers ----
+function toast(msg, type='info', ms=3800){
+  const stack = document.getElementById('toast-stack');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type==='error' ? 'error' : type==='success' ? 'success' : '');
+  el.textContent = msg;
+  stack.appendChild(el);
+  setTimeout(()=> { el.style.opacity='0'; el.style.transform='translateY(-6px)'; setTimeout(()=> el.remove(), 220)}, ms);
+}
+function showView(name){
+  Object.values(views).forEach(v=> v.classList.remove('active'));
+  views[name].classList.add('active');
+}
+function isWatchDevice(){
+  const ua = navigator.userAgent.toLowerCase();
+  const watchUA = /wear os|wearos|tizen|watch|galaxy watch|apple watch|watchos|samsung.*sm-r|samsung.*watch/i.test(ua);
+  const smallSquare = window.innerWidth <= 360 && window.innerHeight <= 360 && /android/i.test(ua);
+  const tiny = window.matchMedia('(max-width: 320px) and (max-height: 320px)').matches;
+  return watchUA || smallSquare || tiny;
+}
+function applyWatchClass(){
+  document.body.classList.toggle('watch-mode', isWatchDevice());
+}
+function initials(name, email){
+  if(name) return name.trim().split(/\s+/).slice(0,2).map(s=>s[0].toUpperCase()).join('');
+  if(email) return email[0].toUpperCase();
+  return '?';
+}
+function formatToday(){
+  const now = new Date();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const long = now.toLocaleDateString('sv-SE', { weekday:'short', year:'numeric', month:'short', day:'numeric'});
+  return { mm, dd, long };
+}
+function qrPayload(googleId){
+  const {mm, dd} = formatToday();
+  return `:${mm}${dd};${googleId}`;
+}
+function renderQR(text){
+  state.lastQRText = text;
+  const wrap = els.qrWrap;
+  wrap.innerHTML = '';
+  // try local lib
+  try{
+    if(window.QRCode){
+      // qrcodejs expects a container; it creates img/canvas
+      // eslint-disable-next-line no-new
+      new window.QRCode(wrap, {
+        text,
+        width: 280,
+        height: 280,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.M
+      });
+      // ensure sizing
+      const inner = wrap.querySelector('img, canvas');
+      if(inner){ inner.style.width='100%'; inner.style.height='auto'; inner.style.display='block'; }
+      return;
+    }
+  }catch(e){ console.warn('QR local failed', e); }
+  // fallback to external image
+  const img = document.createElement('img');
+  img.alt = 'QR Code';
+  img.width = 280; img.height = 280;
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(text)}`;
+  img.onerror = () => { toast('Kunde inte ladda QR — kontrollera anslutningen', 'error'); };
+  wrap.appendChild(img);
+}
+function updateHeader(user){
+  els.userName.textContent = user.displayName || 'Användare';
+  els.userEmail.textContent = user.email || '';
+  els.avatar.textContent = initials(user.displayName, user.email);
+  const {mm, dd, long} = formatToday();
+  els.dateBadge.textContent = `${mm}/${dd}`;
+  els.dateLong.textContent = long;
+}
+
+// ---- storage helpers (watch token) ----
+async function getSavedToken(){
+  try{
+    const tok = localStorage.getItem('watchDeviceToken');
+    if(!tok) return null;
+    const ref = doc(db, 'device_tokens', tok);
+    const snap = await getDoc(ref);
+    if(snap.exists()){
+      const d = snap.data();
+      return { token: tok, googleId: d.googleId, email: d.email, displayName: d.displayName, uid: d.userId };
+    } else {
+      localStorage.removeItem('watchDeviceToken');
+    }
+  }catch(e){ console.warn(e); }
+  return null;
+}
+async function saveToken(userData){
+  try{
+    const tok = 'WD-' + Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
+    await setDoc(doc(db, 'device_tokens', tok), {
+      userId: userData.uid,
+      googleId: userData.googleId,
+      email: userData.email,
+      displayName: userData.displayName,
+      createdAt: serverTimestamp(),
+      deviceInfo: navigator.userAgent.slice(0,300)
+    });
+    localStorage.setItem('watchDeviceToken', tok);
+    return tok;
+  }catch(e){ console.error(e); toast('Kunde inte spara klock-token', 'error'); return null; }
+}
+async function clearToken(){
+  try{
+    const t = localStorage.getItem('watchDeviceToken');
+    if(t) await deleteDoc(doc(db, 'device_tokens', t));
+  }catch(e){ /* ignore */ }
+  localStorage.removeItem('watchDeviceToken');
+}
+
+// ---- firestore consent ----
+async function hasConsent(user){
+  try{
+    const snap = await getDoc(doc(db, 'user_consents', user.uid));
+    return snap.exists();
+  }catch(e){
+    console.error('hasConsent', e);
+    if(String(e.code).includes('permission')) toast('Behörighetsfel — kontrollera firestore.rules', 'error');
+    return false;
+  }
+}
+async function storeConsent(user, googleId){
+  try{
+    await setDoc(doc(db, 'user_consents', user.uid), {
+      googleId,
+      email: user.email,
+      displayName: user.displayName,
+      consentedAt: serverTimestamp(),
+      lastUsed: serverTimestamp()
+    });
+    return true;
+  }catch(e){ console.error(e); toast('Kunde inte spara samtycke: ' + e.message, 'error'); return false; }
+}
+
+// ---- view transitions ----
+function showQR(user, googleId){
+  state.user = user; state.googleId = googleId;
+  updateHeader(user);
+  renderQR(qrPayload(googleId));
+  els.qrStatus.style.display='none';
+  showView('qr');
+  applyWatchClass();
+}
+function showConsent(user){
+  state.user = user;
+  showView('consent');
+}
+function showAuth(){
+  cleanupPairing();
+  showView('auth');
+}
+function setLoading(msg){
+  // keep loading view but update text if needed
+  showView('loading');
+}
+
+// ---- pairing ----
+function genCode(){ return String(Math.floor(100000 + Math.random()*900000)); }
+
+async function startPairing(){
+  showView('pairing');
+  const code = genCode();
+  state.pairingCode = code;
+  els.pairCode.textContent = code;
+  els.pairStatus.textContent = 'Väntar på telefon…';
+  els.pairStatus.className = 'status';
+  try{
+    await setDoc(doc(db, 'pairing_codes', code), {
+      code, status:'waiting', createdAt: serverTimestamp(), deviceInfo: navigator.userAgent.slice(0,300)
+    });
+  }catch(e){ toast('Kunde inte skapa kod: '+e.message,'error'); showAuth(); return; }
+
+  const ref = doc(db, 'pairing_codes', code);
+  state.pairingUnsub = onSnapshot(ref, async (snap)=>{
+    if(!snap.exists()) return;
+    const d = snap.data();
+    if(d.status==='paired' && d.googleId){
+      if(state.pairingUnsub){ state.pairingUnsub(); state.pairingUnsub=null; }
+      els.pairStatus.textContent = 'Parkopplad! Laddar…';
+      els.pairStatus.className = 'status ok';
+      // persist token for watch
+      await saveToken({ googleId: d.googleId, email: d.userEmail, displayName: d.userName, uid: d.userId });
+      showQR({ displayName: d.userName, email: d.userEmail, uid: d.userId }, d.googleId);
+      setTimeout(async ()=>{
+        try{ await deleteDoc(ref);}catch{}
+      }, 4000);
+    }
+  }, (err)=>{ console.error(err); els.pairStatus.textContent='Fel: '+err.message; els.pairStatus.className='status err'; });
+
+  // expiry 5 min
+  setTimeout(async ()=>{
+    if(!state.pairingUnsub) return;
+    try{
+      const s = await getDoc(ref);
+      if(s.exists() && s.data().status==='waiting'){
+        await deleteDoc(ref);
+        els.pairStatus.textContent='Koden gick ut — försök igen';
+        els.pairStatus.className='status err';
+        setTimeout(()=> showAuth(), 1800);
+      }
+    }catch{}
+    cleanupPairing(false);
+  }, 300000);
+}
+function cleanupPairing(navigate=true){
+  if(state.pairingUnsub){ state.pairingUnsub(); state.pairingUnsub=null; }
+  if(state.pairingCode && navigate){
+    // best-effort delete if still waiting
+    deleteDoc(doc(db,'pairing_codes', state.pairingCode)).catch(()=>{});
+  }
+  state.pairingCode=null;
+}
+async function manualCheckPairing(){
+  if(!state.pairingCode) return;
+  els.pairStatus.textContent='Kontrollerar…';
+  try{
+    const snap = await getDoc(doc(db,'pairing_codes', state.pairingCode));
+    if(!snap.exists()){ els.pairStatus.textContent='Koden hittades inte'; els.pairStatus.className='status err'; return; }
+    const d = snap.data();
+    if(d.status==='paired' && d.googleId){
+      if(state.pairingUnsub){ state.pairingUnsub(); state.pairingUnsub=null; }
+      await saveToken({ googleId:d.googleId, email:d.userEmail, displayName:d.userName, uid:d.userId });
+      showQR({displayName:d.userName, email:d.userEmail, uid:d.userId}, d.googleId);
+      setTimeout(async()=>{ try{await deleteDoc(doc(db,'pairing_codes', state.pairingCode));}catch{} }, 3000);
+    } else {
+      els.pairStatus.textContent='Fortfarande väntar…';
+      els.pairStatus.className='status';
+    }
+  }catch(e){ els.pairStatus.textContent='Fel: '+e.message; els.pairStatus.className='status err'; }
+}
+async function submitPairingCode(){
+  const raw = els.pairInput.value.trim();
+  if(!/^\d{6}$/.test(raw)) return toast('Ange en giltig 6-siffrig kod','error');
+  if(!state.user) return toast('Logga in först','error');
+  const ref = doc(db,'pairing_codes', raw);
+  try{
+    const snap = await getDoc(ref);
+    if(!snap.exists()) return toast('Ogiltig eller utgången kod','error');
+    if(snap.data().status!=='waiting') return toast('Koden är redan använd','error');
+    const gid = state.googleId || state.user.providerData.find(p=>p.providerId==='google.com')?.uid || state.user.uid;
+    await updateDoc(ref, {
+      status:'paired',
+      userId: state.user.uid,
+      userEmail: state.user.email,
+      userName: state.user.displayName,
+      googleId: gid,
+      pairedAt: serverTimestamp()
+    });
+    toast('Klocka länkad!','success');
+    els.pairInput.value='';
+  }catch(e){ toast('Kunde inte länka: '+e.message,'error'); }
+}
+
+// ---- auth flows ----
+async function handleAuthedUser(user){
+  state.user = user;
+  const prov = user.providerData.find(p=> p.providerId==='google.com');
+  const gid = prov?.uid || user.uid;
+  state.googleId = gid;
+
+  // check consent
+  const ok = await hasConsent(user);
+  if(ok){
+    // touch lastUsed best-effort
+    updateDoc(doc(db,'user_consents', user.uid), { lastUsed: serverTimestamp() }).catch(()=>{});
+    // save watch token if on watch for seamless next time
+    if(isWatchDevice()){
+      const existing = localStorage.getItem('watchDeviceToken');
+      if(!existing) await saveToken({ googleId: gid, email:user.email, displayName:user.displayName, uid:user.uid });
+    }
+    showQR(user, gid);
+  }else{
+    showConsent(user);
+  }
+}
+
+async function doSignIn(){
+  els.btnSignin.disabled = true;
+  setLoading();
+  try{
+    const res = await signInWithPopup(auth, provider);
+    await handleAuthedUser(res.user);
+  }catch(e){
+    console.error('popup', e);
+    const code = e.code || '';
+    // fallback to redirect for popup-blocked / unsupported
+    if(code.includes('popup-blocked') || code.includes('popup-closed') || code.includes('cancelled') || code.includes('operation-not-supported') || code.includes('auth/popup')){
+      try{
+        toast('Öppnar säker inloggning…','info');
+        await signInWithRedirect(auth, provider);
+        return;
+      }catch(re){ toast(re.message || 'Inloggning misslyckades','error'); }
+    } else if(code==='auth/unauthorized-domain'){
+      toast('Domänen är inte godkänd i Firebase Auth — lägg till den under Authorized domains','error', 6000);
+    } else {
+      toast(e.message || 'Inloggning misslyckades','error');
+    }
+    showAuth();
+  }finally{
+    els.btnSignin.disabled = false;
+  }
+}
+async function doAgree(){
+  if(!state.user) return;
+  els.btnAgree.disabled = true;
+  setLoading();
+  const prov = state.user.providerData.find(p=> p.providerId==='google.com');
+  const gid = prov?.uid || state.user.uid;
+  state.googleId = gid;
+  const ok = await storeConsent(state.user, gid);
+  if(ok){
+    if(isWatchDevice()) await saveToken({ googleId: gid, email: state.user.email, displayName: state.user.displayName, uid: state.user.uid });
+    showQR(state.user, gid);
+    toast('Tack! Din biljett är redo.','success');
+  } else {
+    showConsent(state.user);
+  }
+  els.btnAgree.disabled = false;
+}
+async function doDecline(){
+  try{ await signOut(auth);}catch{}
+  state.user=null; state.googleId=null;
+  await clearToken();
+  showAuth();
+  toast('Du har loggats ut — samtycke krävs för biljetten','info');
+}
+async function doSignOut(){
+  try{ await signOut(auth);}catch{}
+  state.user=null; state.googleId=null;
+  await clearToken();
+  showAuth();
+}
+async function doDeleteData(){
+  if(!state.user) return;
+  if(!confirm('Radera all din sparade data? Du behöver godkänna igen för att använda biljetten.')) return;
+  try{
+    await deleteDoc(doc(db,'user_consents', state.user.uid));
+    await clearToken();
+    await signOut(auth);
+    state.user=null; state.googleId=null;
+    showAuth();
+    toast('Din data är raderad.','success');
+  }catch(e){ toast('Kunde inte radera: '+e.message,'error'); }
+}
+
+// ---- boot ----
+applyWatchClass();
+window.addEventListener('resize', applyWatchClass);
+
+// button wiring
+els.btnSignin.addEventListener('click', doSignIn);
+els.btnWatch.addEventListener('click', startPairing);
+els.btnAgree.addEventListener('click', doAgree);
+els.btnDecline.addEventListener('click', doDecline);
+els.btnSignout.addEventListener('click', doSignOut);
+els.btnDelete.addEventListener('click', doDeleteData);
+els.btnPair.addEventListener('click', submitPairingCode);
+els.pairInput.addEventListener('keydown', e=>{ if(e.key==='Enter') submitPairingCode(); });
+els.btnPairCheck.addEventListener('click', manualCheckPairing);
+els.btnPairCancel.addEventListener('click', ()=>{ cleanupPairing(true); showAuth(); });
+els.linkConsent.addEventListener('click', (e)=>{ e.preventDefault(); if(state.user) showConsent(state.user); else toast('Logga in först för att se villkoren','info'); });
+
+// copy / download helpers
+els.btnCopy.addEventListener('click', async ()=>{
+  if(!state.lastQRText) return;
+  try{ await navigator.clipboard.writeText(state.lastQRText); toast('Kopierad!','success'); }catch{ toast(state.lastQRText,'info', 5000); }
+});
+els.btnDownload.addEventListener('click', ()=>{
+  const canvas = els.qrWrap.querySelector('canvas');
+  const img = els.qrWrap.querySelector('img');
+  let url = '';
+  if(canvas){
+    try{ url = canvas.toDataURL('image/png'); }catch{}
+  }
+  if(!url && img) url = img.src;
+  if(!url) return toast('Ingen QR att ladda ner','error');
+  const a = document.createElement('a');
+  a.href = url; a.download = `lunchpoang-${formatToday().mm}${formatToday().dd}.png`;
+  document.body.appendChild(a); a.click(); a.remove();
+});
+
+// ---- auth init: handle redirect first, then listen ----
+(async function initAuth(){
+  // quick watch token auto-login (before firebase) — gives instant QR on watch
+  if(isWatchDevice()){
+    const saved = await getSavedToken();
+    if(saved){
+      // show QR immediately without firebase auth
+      showQR({ displayName: saved.displayName, email: saved.email, uid: saved.uid }, saved.googleId);
+      // still let firebase init in background; if user is actually authed, it will reconcile
+    }
+  }
+  try{
+    const res = await getRedirectResult(auth);
+    if(res && res.user){
+      await handleAuthedUser(res.user);
+      state.redirectHandled = true;
+      return;
+    }
+  }catch(e){
+    console.error('redirectResult', e);
+    if(e.code && e.code!=='auth/no-auth-event') toast('Inloggning via redirect misslyckades: '+e.message,'error');
+  }
+  // not from redirect — listen for state
+  onAuthStateChanged(auth, async (user)=>{
+    if(state.redirectHandled) return;
+    if(user){
+      await handleAuthedUser(user);
+    }else{
+      // no firebase user — keep watch token if we already show QR, else show auth
+      const alreadyQR = views.qr.classList.contains('active') && state.googleId;
+      if(alreadyQR) return;
+      const saved = await getSavedToken();
+      if(saved && isWatchDevice()){
+        showQR({displayName:saved.displayName, email:saved.email, uid:saved.uid}, saved.googleId);
+      }else{
+        showAuth();
+      }
+    }
+  });
+  // fallback: if after 1.5s still loading (no auth event), showAuth
+  setTimeout(()=>{
+    if(views.loading.classList.contains('active')) showAuth();
+  }, 1600);
+})();
+
+// expose for debugging (optional)
+window._lp = { auth, db, state, toast, showView };
+</script>
 </body>
 </html>

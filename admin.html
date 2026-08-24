@@ -1,547 +1,528 @@
 <!DOCTYPE html>
-<html>
+<html lang="sv">
 <head>
-    <title>Admin Dashboard - Lunch Ticket</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .admin-info {
-            background-color: #e3f2fd;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #2196f3;
-        }
-
-        .admin-info h3 {
-            margin: 0 0 10px 0;
-            color: #1976d2;
-        }
-
-        .admin-info p {
-            margin: 5px 0;
-            color: #555;
-        }
-
-        .login-btn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 12px 24px;
-            font-size: 16px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .login-btn:hover {
-            background-color: #3367d6;
-        }
-
-        .logout-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        .logout-btn:hover {
-            background-color: #c82333;
-        }
-
-        .search-box {
-            width: 100%;
-            max-width: 400px;
-            padding: 10px;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-
-        .actions {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .export-btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .export-btn:hover {
-            background-color: #218838;
-        }
-
-        .refresh-btn {
-            background-color: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .refresh-btn:hover {
-            background-color: #5a6268;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        .qr-btn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .qr-btn:hover {
-            background-color: #3367d6;
-        }
-
-        .delete-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-
-        .delete-btn:hover {
-            background-color: #c82333;
-        }
-
-        .qr-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .qr-modal-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            max-width: 90vw;
-        }
-
-        .qr-modal img {
-            max-width: 300px;
-            max-height: 300px;
-        }
-
-        .qr-modal button {
-            margin-top: 15px;
-            padding: 10px 20px;
-            background-color: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .error-message {
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-
-        .success-message {
-            background-color: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            table {
-                font-size: 12px;
-            }
-
-            th, td {
-                padding: 8px;
-            }
-
-            .qr-btn, .delete-btn {
-                padding: 4px 8px;
-                font-size: 11px;
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<title>Admin — Lunchpoäng</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#f8fafc; --card:#fff; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --muted2:#94a3b8;
+    --accent:#2563eb; --accent-h:#1d4ed8; --danger:#dc2626; --success:#16a34a;
+    --radius:14px; --shadow: 0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:22px 16px 40px}
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .title h1{margin:0; font-size:22px; letter-spacing:-.02em; display:flex; align-items:center; gap:10px}
+  .title p{margin:4px 0 0; color:var(--muted); font-size:13px}
+  .chip{
+    display:inline-flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border);
+    padding:8px 12px; border-radius:999px; box-shadow: var(--shadow); font-size:13px;
+  }
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--success)}
+  .btn{
+    appearance:none; border:none; border-radius:999px; padding:10px 16px; font-size:13px; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:.15s; line-height:1;
+  }
+  .btn-primary{background:var(--accent); color:#fff}
+  .btn-primary:hover{background:var(--accent-h)}
+  .btn-ghost{background:var(--card); border:1px solid var(--border); color:var(--text)}
+  .btn-ghost:hover{background:#f1f5f9}
+  .btn-danger{background:var(--danger); color:#fff}
+  .btn-danger:hover{background:#b91c1c}
+  .btn-small{padding:7px 10px; font-size:12px}
+  /* stats */
+  .stats{display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin:14px 0 16px}
+  .stat{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow: var(--shadow)}
+  .stat .k{font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+  .stat .v{font-size:22px; font-weight:700; margin-top:4px; letter-spacing:-.02em}
+  .stat .s{font-size:12px; color:var(--muted); margin-top:2px}
+  @media(max-width:700px){ .stats{grid-template-columns:1fr} }
+  /* controls */
+  .controls{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; box-shadow: var(--shadow);
+    margin-bottom:12px;
+  }
+  .search{
+    flex:1; min-width:220px; display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid var(--border);
+    border-radius:999px; padding:8px 12px;
+  }
+  .search input{border:none; outline:none; background:transparent; width:100%; font-size:13px}
+  .search:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.12); background:#fff}
+  .actions{display:flex; gap:8px; flex-wrap:wrap}
+  /* table */
+  .table-wrap{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow: var(--shadow)}
+  .table-head{
+    display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border);
+    font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+  }
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  th{ text-align:left; padding:10px 12px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:#f8fafc; border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none}
+  th:hover{color:var(--text)}
+  td{padding:11px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#f8fafc}
+  .mono{font-family: JetBrains Mono, monospace; font-size:11px; color:#334155; word-break:break-all}
+  .pill{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--border); background:#f8fafc}
+  .pill.ok{ background:#dcfce7; border-color:#bbf7d0; color:#166534}
+  .empty{padding:28px; text-align:center; color:var(--muted)}
+  /* modal */
+  .modal{
+    position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter: blur(6px);
+    display:none; align-items:center; justify-content:center; padding:16px; z-index:50;
+  }
+  .modal.open{display:flex}
+  .modal-card{background:var(--card); border-radius:16px; padding:18px; width:min(420px, 92vw); box-shadow: 0 20px 60px rgba(0,0,0,.25); text-align:center}
+  .qr-box{background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; display:grid; place-items:center; margin:12px 0}
+  .qr-box img, .qr-box canvas{width:100% !important; height:auto !important; max-width:300px}
+  /* toast */
+  #toast{position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:60; display:flex; flex-direction:column; gap:8px; width:min(92vw,420px); pointer-events:none}
+  .toast{background:#0f172a; color:#fff; padding:11px 13px; border-radius:10px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.2); animation: in .2s ease}
+  .toast.err{background:#7f1d1d}
+  .toast.ok{background:#14532d}
+  @keyframes in{from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:translateY(0)}}
+  /* login */
+  .login-card{max-width:520px; margin:40px auto; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow: var(--shadow)}
+  .login-card h2{margin:0 0 6px; font-size:18px}
+  .login-card p{margin:0; color:var(--muted); font-size:13px; line-height:1.5}
+  .hint{margin-top:12px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 12px; border-radius:10px; font-size:12px}
+  /* pag */
+  .pag{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-top:1px solid var(--border); background:#fff}
+  .pag small{color:var(--muted)}
+</style>
 </head>
 <body>
-    <h1>🎫 Lunch Ticket Admin Dashboard</h1>
+<div id="toast" aria-live="polite"></div>
 
-    <div id="login-section">
-        <div class="admin-info">
-            <h3>Admin Access Required</h3>
-            <p>You must sign in with your admin Google account to view user data.</p>
-            <p>Only authorized administrators can access this dashboard.</p>
-        </div>
-        <button class="login-btn" onclick="signInAdmin()">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" height="18">
-            Sign in with Google
-        </button>
+<div class="wrap" id="app" style="display:none">
+  <header>
+    <div class="title">
+      <h1>🎫 Lunchpoäng — Admin</h1>
+      <p>Hantera samtycken, visa biljetter och exportera data</p>
     </div>
-
-    <div id="admin-section" style="display: none;">
-        <div class="admin-info">
-            <h3>Welcome, <span id="admin-name"></span></h3>
-            <p>Signed in as: <span id="admin-email"></span></p>
-            <p>Total users: <strong id="user-count">0</strong></p>
-        </div>
-
-        <button class="logout-btn" onclick="signOutAdmin()">Sign Out</button>
-
-        <input type="text" class="search-box" id="search-box" placeholder="Search by email or name..." onkeyup="filterUsers()">
-
-        <div class="actions">
-            <button class="refresh-btn" onclick="loadUsers()">🔄 Refresh</button>
-            <button class="export-btn" onclick="exportToCSV()">📥 Export to CSV</button>
-        </div>
-
-        <div id="message-area"></div>
-
-        <table id="users-table">
-            <thead>
-                <tr>
-                    <th>Email</th>
-                    <th>Name</th>
-                    <th>Google ID</th>
-                    <th>Consented</th>
-                    <th>Last Used</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="users-tbody">
-            </tbody>
-        </table>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+      <span class="chip"><span class="dot"></span><span id="admin-email">—</span></span>
+      <button class="btn btn-ghost btn-small" id="btn-logout" type="button">Logga ut</button>
     </div>
+  </header>
 
-    <div id="qr-modal" class="qr-modal" onclick="closeQRModal()">
-        <div class="qr-modal-content" onclick="event.stopPropagation()">
-            <h3>QR Code</h3>
-            <img id="modal-qr" src="" alt="QR Code">
-            <p id="modal-user-info"></p>
-            <button onclick="closeQRModal()">Close</button>
-        </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="k">Totalt användare</div>
+      <div class="v" id="stat-total">—</div>
+      <div class="s" id="stat-total-sub">Laddar…</div>
     </div>
+    <div class="stat">
+      <div class="k">Senaste dygnet</div>
+      <div class="v" id="stat-24h">—</div>
+      <div class="s">Aktiva enligt lastUsed</div>
+    </div>
+    <div class="stat">
+      <div class="k">Idag tillagda</div>
+      <div class="v" id="stat-today">—</div>
+      <div class="s">Nya samtycken idag</div>
+    </div>
+  </div>
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { 
-            getAuth, 
-            GoogleAuthProvider, 
-            signInWithPopup, 
-            signOut,
-            onAuthStateChanged 
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { 
-            getFirestore, 
-            collection, 
-            getDocs, 
-            doc, 
-            deleteDoc 
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  <div class="controls">
+    <label class="search" aria-label="Sök">
+      <span aria-hidden="true">🔍</span>
+      <input id="search" type="search" placeholder="Sök e-post, namn eller Google-ID…" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="actions">
+      <button class="btn btn-ghost btn-small" id="btn-refresh" type="button">↻ Uppdatera</button>
+      <button class="btn btn-primary btn-small" id="btn-export" type="button">⬇ Exportera CSV</button>
+    </div>
+  </div>
 
-        // Your Firebase config (same as main app)
-        const firebaseConfig = {
-            apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
-            authDomain: "lunchkod1239123.firebaseapp.com",
-            projectId: "lunchkod1239123",
-            storageBucket: "lunchkod1239123.firebasestorage.app",
-            messagingSenderId: "198521085351",
-            appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
-        };
+  <div class="table-wrap">
+    <div class="table-head">
+      <span id="table-meta">—</span>
+      <span style="font-weight:500; text-transform:none; letter-spacing:0; color:var(--muted2); font-size:12px">Klicka på rubrik för att sortera</span>
+    </div>
+    <div style="overflow:auto">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th data-k="email">E-post ▾</th>
+            <th data-k="displayName">Namn</th>
+            <th data-k="googleId">Google ID</th>
+            <th data-k="consentedAt">Samtycke</th>
+            <th data-k="lastUsed">Senast aktiv</th>
+            <th>Åtgärder</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pag">
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-ghost btn-small" id="btn-prev" type="button">‹ Föregående</button>
+        <button class="btn btn-ghost btn-small" id="btn-next" type="button">Nästa ›</button>
+      </div>
+      <small id="pag-info">—</small>
+    </div>
+  </div>
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
+  <p style="margin:12px 2px 0; color:var(--muted); font-size:11px">Admin-åtkomst styrs i koden via <code>ADMIN_EMAIL</code>. För riktig säkerhet — sätt Firestore-regler med <code>request.auth.token.email == 'din@epost'</code> eller använd Custom Claims. Fältet Google ID används i QR: <code>:MMDD;GOOGLE_ID</code>.</p>
+</div>
 
-        let currentAdmin = null;
-        let allUsers = [];
+<!-- Login -->
+<div class="wrap" id="view-login">
+  <div class="login-card">
+    <h2>Admin-inloggning krävs</h2>
+    <p>Logga in med ditt Google-konto. Endast den angivna admin-adressen har åtkomst till användarlistan.</p>
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" id="btn-login" type="button">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="18" height="18"> Logga in med Google
+      </button>
+    </div>
+    <div class="hint" id="hint" style="display:none"></div>
+    <p style="margin-top:14px; font-size:12px; color:var(--muted)">Tips: om inloggning misslyckas — kontrollera att domänen är tillagd under <strong>Firebase Console → Authentication → Authorized domains</strong> och att Firestore-reglerna tillåter läsning av <code>user_consents</code>.</p>
+  </div>
+</div>
 
-        // Admin email (REPLACE WITH YOUR EMAIL)
-        const ADMIN_EMAIL = "olle.zetterstrom@student.tabyenskilda.se";
+<!-- QR modal -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="QR-kod">
+  <div class="modal-card">
+    <h3 style="margin:0">QR-kod</h3>
+    <p id="modal-sub" style="margin:6px 0 0; color:var(--muted); font-size:13px">—</p>
+    <div id="modal-qr" class="qr-box"></div>
+    <div style="display:flex; gap:8px; justify-content:center">
+      <button class="btn btn-ghost btn-small" id="btn-modal-close" type="button">Stäng</button>
+      <button class="btn btn-primary btn-small" id="btn-modal-download" type="button">Ladda ner PNG</button>
+    </div>
+  </div>
+</div>
 
-        // Show message
-        function showMessage(message, isError = false) {
-            const area = document.getElementById('message-area');
-            area.innerHTML = `<div class="${isError ? 'error-message' : 'success-message'}">${message}</div>`;
-            setTimeout(() => {
-                area.innerHTML = '';
-            }, 5000);
-        }
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, getDocs, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-        // Sign in as admin
-        window.signInAdmin = async function() {
-            try {
-                const result = await signInWithPopup(auth, provider);
-                currentAdmin = result.user;
-                
-                // Check if this is the admin
-                if (currentAdmin.email !== ADMIN_EMAIL) {
-                    showMessage('Access denied. You are not authorized as an admin.', true);
-                    await signOut(auth);
-                    return;
-                }
+const firebaseConfig = {
+  apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
+  authDomain: "lunchkod1239123.firebaseapp.com",
+  projectId: "lunchkod1239123",
+  storageBucket: "lunchkod1239123.firebasestorage.app",
+  messagingSenderId: "198521085351",
+  appId: "1:198521085351:web:85bbdd3bf00a3d62462a82"
+};
+const ADMIN_EMAIL = "olle.zetterstrom@student.tabyenskilda.se";
 
-                showAdminSection();
-                loadUsers();
-            } catch (error) {
-                console.error('Sign in error:', error);
-                showMessage('Sign in failed: ' + error.message, true);
-            }
-        };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
 
-        // Sign out
-        window.signOutAdmin = async function() {
-            try {
-                await signOut(auth);
-                currentAdmin = null;
-                showLoginSection();
-            } catch (error) {
-                console.error('Sign out error:', error);
-            }
-        };
+const $ = s=> document.getElementById(s);
+const els = {
+  app: $('app'), login: $('view-login'),
+  btnLogin: $('btn-login'), btnLogout: $('btn-logout'),
+  adminEmail: $('admin-email'), hint: $('hint'),
+  statTotal: $('stat-total'), stat24h: $('stat-24h'), statToday: $('stat-today'),
+  statSub: $('stat-total-sub'),
+  search: $('search'), btnRefresh: $('btn-refresh'), btnExport: $('btn-export'),
+  tbody: $('tbody'), tableMeta: $('table-meta'),
+  btnPrev: $('btn-prev'), btnNext: $('btn-next'), pagInfo: $('pag-info'),
+  modal: $('modal'), modalQr: $('modal-qr'), modalSub: $('modal-sub'),
+  btnModalClose: $('btn-modal-close'), btnModalDownload: $('btn-modal-download'),
+};
 
-        // Show admin section
-        function showAdminSection() {
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('admin-section').style.display = 'block';
-            document.getElementById('admin-name').textContent = currentAdmin.displayName;
-            document.getElementById('admin-email').textContent = currentAdmin.email;
-        }
+let all = [];
+let filtered = [];
+let sortKey = 'consentedAt';
+let sortDir = -1; // -1 desc
+let page = 0;
+const PAGE_SIZE = 20;
+let currentQR = { text:'', name:'', email:'' };
 
-        // Show login section
-        function showLoginSection() {
-            document.getElementById('login-section').style.display = 'block';
-            document.getElementById('admin-section').style.display = 'none';
-        }
+function toast(msg, type='ok'){
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type==='err' ? 'err' : 'ok');
+  t.textContent = msg;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(()=> { t.style.opacity='0'; setTimeout(()=> t.remove(), 200)}, 3600);
+}
+function fmtDate(v){
+  if(!v) return '—';
+  try{
+    const d = v instanceof Date ? v : v.toDate ? v.toDate() : new Date(v);
+    if(isNaN(d)) return '—';
+    return d.toLocaleDateString('sv-SE') + ' ' + d.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+  }catch{ return '—'; }
+}
+function fmtShort(v){
+  if(!v) return '—';
+  try{
+    const d = v instanceof Date ? v : v.toDate ? v.toDate() : new Date(v);
+    return d.toLocaleDateString('sv-SE');
+  }catch{ return '—'; }
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
 
-        // Load all users
-        window.loadUsers = async function() {
-            try {
-                const querySnapshot = await getDocs(collection(db, 'user_consents'));
-                allUsers = [];
-                
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    allUsers.push({
-                        id: doc.id,
-                        ...data,
-                        consentedAt: data.consentedAt?.toDate?.() || data.consentedAt,
-                        lastUsed: data.lastUsed?.toDate?.() || data.lastUsed
-                    });
-                });
+function applyFilter(){
+  const q = els.search.value.trim().toLowerCase();
+  if(!q){ filtered = [...all]; }
+  else {
+    filtered = all.filter(u =>
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.displayName && u.displayName.toLowerCase().includes(q)) ||
+      (u.googleId && u.googleId.toLowerCase().includes(q))
+    );
+  }
+  sortAndRender();
+}
+function sortAndRender(){
+  filtered.sort((a,b)=>{
+    const av = a[sortKey], bv = b[sortKey];
+    // date handling
+    const aVal = av && av.toDate ? av.toDate().getTime() : av instanceof Date ? av.getTime() : (av ?? '');
+    const bVal = bv && bv.toDate ? bv.toDate().getTime() : bv instanceof Date ? bv.getTime() : (bv ?? '');
+    if(aVal === bVal) return 0;
+    if(aVal === '' || aVal == null) return 1;
+    if(bVal === '' || bVal == null) return -1;
+    if(typeof aVal==='number' && typeof bVal==='number') return (aVal - bVal) * sortDir;
+    return String(aVal).localeCompare(String(bVal), 'sv') * sortDir;
+  });
+  page = 0;
+  renderPage();
+}
+function renderPage(){
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  page = Math.min(Math.max(0, page), pages-1);
+  const start = page * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
 
-                // Sort by consent date (newest first)
-                allUsers.sort((a, b) => (b.consentedAt || 0) - (a.consentedAt || 0));
+  els.tbody.innerHTML = '';
+  if(slice.length===0){
+    els.tbody.innerHTML = `<tr><td colspan="6"><div class="empty">Inga användare matchar sökningen.</div></td></tr>`;
+  } else {
+    for(const u of slice){
+      const tr = document.createElement('tr');
+      const safeEmail = escapeHtml(u.email || '—');
+      const safeName  = escapeHtml(u.displayName || '—');
+      const safeGid   = escapeHtml(u.googleId || '—');
+      tr.innerHTML = `
+        <td><strong>${safeEmail}</strong></td>
+        <td>${safeName}</td>
+        <td class="mono" title="${safeGid}">${safeGid.length>22 ? safeGid.slice(0,10)+'…'+safeGid.slice(-8) : safeGid}</td>
+        <td><span class="pill">${escapeHtml(fmtShort(u.consentedAt))}</span></td>
+        <td>${escapeHtml(fmtShort(u.lastUsed))}</td>
+        <td>
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <button class="btn btn-primary btn-small" data-qr="${escapeHtml(u.googleId)}" data-email="${escapeHtml(u.email||'')}" data-name="${escapeHtml(u.displayName||'')}" ${!u.googleId ? 'disabled' : ''}>QR</button>
+            <button class="btn btn-ghost btn-small" data-del="${escapeHtml(u.id)}" data-email2="${escapeHtml(u.email||'')}">Radera</button>
+          </div>
+        </td>`;
+      els.tbody.appendChild(tr);
+    }
+  }
+  els.tableMeta.textContent = `${total} användare • sida ${page+1} av ${pages}`;
+  els.pagInfo.textContent = total ? `${start+1}–${Math.min(start+PAGE_SIZE, total)} av ${total}` : '—';
+  els.btnPrev.disabled = page===0;
+  els.btnNext.disabled = page>=pages-1;
 
-                document.getElementById('user-count').textContent = allUsers.length;
-                displayUsers(allUsers);
-                showMessage(`Loaded ${allUsers.length} users`);
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showMessage('Failed to load users: ' + error.message, true);
-            }
-        };
+  // stats already set elsewhere; also update table header indicators
+  document.querySelectorAll('th[data-k]').forEach(th=>{
+    const k = th.dataset.k;
+    const base = th.textContent.replace(/ [▾▴]/,'');
+    th.textContent = base + (k===sortKey ? (sortDir===1 ? ' ▴' : ' ▾') : '');
+  });
 
-        // Display users in table
-        function displayUsers(users) {
-            const tbody = document.getElementById('users-tbody');
-            tbody.innerHTML = '';
+  // wire row buttons
+  els.tbody.querySelectorAll('[data-qr]').forEach(b=>{
+    b.addEventListener('click', ()=> openQR(b.dataset.qr, b.dataset.email, b.dataset.name));
+  });
+  els.tbody.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click', ()=> delUser(b.dataset.del, b.dataset.email2));
+  });
+}
+function updateStats(){
+  const now = Date.now();
+  const dayAgo = now - 24*3600*1000;
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  let c24=0, cToday=0;
+  for(const u of all){
+    const lu = u.lastUsed && (u.lastUsed.toDate ? u.lastUsed.toDate().getTime() : new Date(u.lastUsed).getTime());
+    const ca = u.consentedAt && (u.consentedAt.toDate ? u.consentedAt.toDate().getTime() : new Date(u.consentedAt).getTime());
+    if(lu && lu >= dayAgo) c24++;
+    if(ca && ca >= todayStart.getTime()) cToday++;
+  }
+  els.statTotal.textContent = String(all.length);
+  els.stat24h.textContent = String(c24);
+  els.statToday.textContent = String(cToday);
+  els.statSub.textContent = all.length ? `Uppdaterad ${new Date().toLocaleTimeString('sv-SE')}` : 'Inga användare ännu';
+}
 
-            users.forEach(user => {
-                const row = document.createElement('tr');
-                
-                const consentedDate = user.consentedAt ? 
-                    new Date(user.consentedAt).toLocaleDateString() : 'N/A';
-                const lastUsedDate = user.lastUsed ? 
-                    new Date(user.lastUsed).toLocaleDateString() : 'N/A';
-                
-                row.innerHTML = `
-                    <td>${user.email || 'N/A'}</td>
-                    <td>${user.displayName || 'N/A'}</td>
-                    <td style="font-family: monospace; font-size: 11px;">${user.googleId || 'N/A'}</td>
-                    <td>${consentedDate}</td>
-                    <td>${lastUsedDate}</td>
-                    <td>
-                        <button class="qr-btn" onclick="generateQRForUser('${user.googleId}', '${user.email}', '${user.displayName}')">Show QR</button>
-                        <button class="delete-btn" onclick="deleteUser('${user.id}', '${user.email}')">Delete</button>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-        }
+async function loadUsers(){
+  els.btnRefresh.disabled = true;
+  els.btnRefresh.textContent = 'Laddar…';
+  try{
+    const snap = await getDocs(collection(db, 'user_consents'));
+    all = [];
+    snap.forEach(d=>{
+      const data = d.data();
+      all.push({
+        id: d.id,
+        email: data.email || '',
+        displayName: data.displayName || '',
+        googleId: data.googleId || '',
+        consentedAt: data.consentedAt || null,
+        lastUsed: data.lastUsed || null,
+      });
+    });
+    // default sort by consentedAt desc
+    applyFilter();
+    updateStats();
+    toast(`Laddade ${all.length} användare`, 'ok');
+  }catch(e){
+    console.error(e);
+    let msg = e.message;
+    if(String(e.code).includes('permission') || msg.includes('Missing or insufficient permissions')){
+      msg = 'Behörighet saknas — uppdatera firestore.rules för user_consents (se hint).';
+      els.hint.style.display='block';
+      els.hint.textContent = 'Firestore nekade läsning. Lägg till regler för user_consents i firestore.rules och deploya, eller öppna tillfälligt för test.';
+    }
+    toast('Kunde inte ladda: ' + msg, 'err');
+    els.tableMeta.textContent = 'Fel vid laddning';
+  }finally{
+    els.btnRefresh.disabled = false;
+    els.btnRefresh.textContent = '↻ Uppdatera';
+  }
+}
+function openQR(googleId, email, name){
+  if(!googleId) return toast('Inget Google-ID för användaren','err');
+  const now = new Date();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const text = `:${mm}${dd};${googleId}`;
+  currentQR = { text, email, name };
+  els.modalSub.textContent = `${name || '—'} • ${email || '—'} • ${mm}/${dd}`;
+  els.modalQr.innerHTML = '';
+  try{
+    // eslint-disable-next-line no-new
+    new window.QRCode(els.modalQr, { text, width:300, height:300, colorDark:'#000', colorLight:'#fff', correctLevel: window.QRCode.CorrectLevel.M });
+  }catch{
+    const img=document.createElement('img');
+    img.src=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(text)}`;
+    img.alt='QR'; els.modalQr.appendChild(img);
+  }
+  els.modal.classList.add('open');
+}
+function closeQR(){ els.modal.classList.remove('open'); }
+async function delUser(id, email){
+  if(!confirm(`Radera data för ${email || id}?`)) return;
+  try{
+    await deleteDoc(doc(db, 'user_consents', id));
+    toast(`Raderade ${email || id}`, 'ok');
+    await loadUsers();
+  }catch(e){ toast('Kunde inte radera: '+e.message,'err'); }
+}
+function exportCSV(){
+  if(!filtered.length) return toast('Inga rader att exportera','err');
+  const headers = ['Email','Name','Google ID','Consented At','Last Used'];
+  const rows = filtered.map(u=>[
+    u.email||'', u.displayName||'', u.googleId||'',
+    u.consentedAt ? (u.consentedAt.toDate ? u.consentedAt.toDate().toISOString() : new Date(u.consentedAt).toISOString()) : '',
+    u.lastUsed ? (u.lastUsed.toDate ? u.lastUsed.toDate().toISOString() : new Date(u.lastUsed).toISOString()) : '',
+  ]);
+  const csv = [headers, ...rows].map(r=> r.map(c=> `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`lunchpoang-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+  toast(`Exporterade ${filtered.length} rader`, 'ok');
+}
+function downloadModalQR(){
+  const canvas = els.modalQr.querySelector('canvas');
+  const img = els.modalQr.querySelector('img');
+  let url='';
+  if(canvas){ try{ url = canvas.toDataURL('image/png'); }catch{} }
+  if(!url && img) url = img.src;
+  if(!url) return;
+  const a=document.createElement('a');
+  a.href=url; a.download=`qr-${currentQR.email || 'user'}.png`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
 
-        // Filter users
-        window.filterUsers = function() {
-            const searchTerm = document.getElementById('search-box').value.toLowerCase();
-            const filtered = allUsers.filter(user => 
-                (user.email && user.email.toLowerCase().includes(searchTerm)) ||
-                (user.displayName && user.displayName.toLowerCase().includes(searchTerm)) ||
-                (user.googleId && user.googleId.toLowerCase().includes(searchTerm))
-            );
-            displayUsers(filtered);
-        };
+// events
+els.btnRefresh.addEventListener('click', loadUsers);
+els.btnExport.addEventListener('click', exportCSV);
+els.search.addEventListener('input', ()=>{
+  clearTimeout(els.search._t);
+  els.search._t = setTimeout(applyFilter, 180);
+});
+els.btnPrev.addEventListener('click', ()=>{ page--; renderPage(); });
+els.btnNext.addEventListener('click', ()=>{ page++; renderPage(); });
+document.querySelectorAll('th[data-k]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const k = th.dataset.k;
+    if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir = k==='email' || k==='displayName' ? 1 : -1; }
+    sortAndRender();
+  });
+});
+els.btnModalClose.addEventListener('click', closeQR);
+els.modal.addEventListener('click', (e)=>{ if(e.target===els.modal) closeQR(); });
+els.btnModalDownload.addEventListener('click', downloadModalQR);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeQR(); });
 
-        // Generate QR for user
-        window.generateQRForUser = function(googleId, email, name) {
-            if (!googleId) {
-                showMessage('No Google ID available for this user', true);
-                return;
-            }
+// auth
+els.btnLogin.addEventListener('click', async ()=>{
+  try{
+    const res = await signInWithPopup(auth, provider);
+    if(res.user.email !== ADMIN_EMAIL){
+      toast('Åtkomst nekad — fel konto','err');
+      await signOut(auth);
+      return;
+    }
+    // ok handled by onAuth
+  }catch(e){
+    console.error(e);
+    let msg = e.message;
+    if(e.code==='auth/unauthorized-domain') msg='Domänen är inte godkänd — lägg till den i Firebase Authorized domains.';
+    if(e.code==='auth/popup-blocked') msg='Popup blockerades — tillåt popups och försök igen.';
+    toast(msg,'err');
+    els.hint.style.display='block';
+    els.hint.textContent = msg;
+  }
+});
+$('btn-logout').addEventListener('click', async ()=>{ await signOut(auth); });
 
-            const now = new Date();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            
-            const fullString = `:${month}${day};${googleId}`;
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(fullString)}`;
-            
-            document.getElementById('modal-qr').src = qrUrl;
-            document.getElementById('modal-user-info').textContent = `${name} (${email})`;
-            document.getElementById('qr-modal').style.display = 'flex';
-        };
-
-        // Close QR modal
-        window.closeQRModal = function() {
-            document.getElementById('qr-modal').style.display = 'none';
-        };
-
-        // Delete user
-        window.deleteUser = async function(userId, email) {
-            if (!confirm(`Are you sure you want to delete data for ${email}?`)) {
-                return;
-            }
-
-            try {
-                await deleteDoc(doc(db, 'user_consents', userId));
-                showMessage(`Deleted user: ${email}`);
-                loadUsers(); // Refresh the list
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                showMessage('Failed to delete user: ' + error.message, true);
-            }
-        };
-
-        // Export to CSV
-        window.exportToCSV = function() {
-            if (allUsers.length === 0) {
-                showMessage('No users to export', true);
-                return;
-            }
-
-            const headers = ['Email', 'Name', 'Google ID', 'Consented At', 'Last Used'];
-            const rows = allUsers.map(user => [
-                user.email || '',
-                user.displayName || '',
-                user.googleId || '',
-                user.consentedAt ? new Date(user.consentedAt).toISOString() : '',
-                user.lastUsed ? new Date(user.lastUsed).toISOString() : ''
-            ]);
-
-            const csvContent = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `lunch-ticket-users-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-
-            showMessage(`Exported ${allUsers.length} users to CSV`);
-        };
-
-        // Listen for auth state
-        onAuthStateChanged(auth, (user) => {
-            if (user && user.email === ADMIN_EMAIL) {
-                currentAdmin = user;
-                showAdminSection();
-                loadUsers();
-            } else {
-                showLoginSection();
-            }
-        });
-    </script>
+onAuthStateChanged(auth, (user)=>{
+  if(user && user.email === ADMIN_EMAIL){
+    els.adminEmail.textContent = user.email;
+    els.login.style.display='none';
+    els.app.style.display='block';
+    loadUsers();
+  } else if(user && user.email !== ADMIN_EMAIL){
+    els.hint.style.display='block';
+    els.hint.textContent = `Inloggad som ${user.email} — men endast ${ADMIN_EMAIL} har admin-rättigheter. Logga ut och logga in med rätt konto.`;
+    els.login.style.display='block';
+    els.app.style.display='none';
+  } else {
+    els.login.style.display='block';
+    els.app.style.display='none';
+  }
+});
+</script>
 </body>
 </html>

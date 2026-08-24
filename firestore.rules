@@ -1,22 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Pairing codes - allow anyone to create/read (needed for watch pairing)
+
+    // Admin email — must match admin.html
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "olle.zetterstrom@student.tabyenskilda.se";
+    }
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // --- Lunchpoäng: user consents (THE CRITICAL FIX) ---
+    // Previously missing — caused "Missing or insufficient permissions" on save/check consent.
+    // Users may create/read/update/delete their own doc; admin may read/list all.
+    match /user_consents/{uid} {
+      allow create: if isOwner(uid)
+                    && request.resource.data.keys().hasAll(['googleId','email','displayName'])
+                    && request.resource.data.googleId is string
+                    && request.resource.data.email is string;
+      allow get, update, delete: if isOwner(uid) || isAdmin();
+      // list (collection query) — only admin may list all consents
+      allow list: if isAdmin();
+      // for security: allow an owner to read their single doc via get, but not list
+      // Firestore evaluates list separately, so non-admin list queries will be rejected as intended.
+    }
+
+    // Pairing codes — short-lived (5 min), unauthenticated watches need to create/read them
+    // Anyone may create a 6-digit code, anyone may read/update it to pair, anyone may delete expired codes.
+    // Consider adding TTL + Cloud Function cleanup in production.
     match /pairing_codes/{code} {
-      allow create: if true;
+      allow create: if code.size() == 6 && code.matches('^[0-9]{6}$');
       allow read: if true;
       allow update: if true;
       allow delete: if true;
     }
-    
-    // Device tokens - allow anyone to create/read (for watch auto-login)
-    // Never expires, deleted only when user signs out
+
+    // Device tokens — long-lived watch auto-login tokens (deleted on sign-out)
+    // Watches are unauthenticated, so they must be able to create/read their token.
+    // Tokens are random (WD-...) and not guessable; still, keep them minimal.
     match /device_tokens/{token} {
       allow create: if true;
       allow read: if true;
       allow delete: if true;
+      // no update needed — tokens are immutable
+      allow update: if false;
     }
-    
+
     // SpellCheck Party — public game, anyone can read/write rooms and subcollections
     match /rooms/{roomId} {
       allow create, read, update, delete: if true;
