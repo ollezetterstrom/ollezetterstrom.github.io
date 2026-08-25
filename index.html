@@ -190,24 +190,65 @@
     .code-big{font-size:36px; padding:14px 16px}
   }
   body.watch-mode{
-    background: #000;
+    background:#000;
     padding:0;
+    overflow:hidden;
   }
-  body.watch-mode #app{max-width:none; width:100vw; height:100dvh; justify-content:center; padding:6px}
+  body.watch-mode #app{max-width:none; width:100vw; height:100dvh; justify-content:stretch; padding:0}
   body.watch-mode .brand{display:none}
   body.watch-mode .foot{display:none}
+
+  /* QR fills the whole screen; everything else becomes a small overlay */
+  body.watch-mode #view-qr.view.active{display:block; height:100dvh; position:relative; width:100vw}
   body.watch-mode #qr-card{
-    padding:6px; border-radius:10px; gap:6px; box-shadow:none;
+    display:block;
+    height:100dvh; width:100vw; margin:0;
+    padding:30px 4px 24px;           /* top room for name chip, bottom for logout */
+    gap:0; border-radius:0;
+    background:#fff; box-shadow:none;
   }
-  body.watch-mode .user-chip{padding:6px 8px; gap:8px}
-  body.watch-mode .avatar{width:28px; height:28px; font-size:12px}
-  body.watch-mode .user-meta strong{font-size:11px}
-  body.watch-mode .user-meta span{font-size:10px}
-  body.watch-mode .qr-wrap{padding:6px; border:none; background:#fff}
-  body.watch-mode .qr-wrap img, body.watch-mode .qr-wrap canvas{max-width:none}
-  body.watch-mode .qr-foot{justify-content:center}
-  body.watch-mode .pair-row, body.watch-mode .divider, body.watch-mode .qr-actions .btn-soft, body.watch-mode .link-btn.danger{display:none !important}
-  body.watch-mode .qr-actions .btn{padding:8px 10px; font-size:12px}
+  /* user chip → tiny overlay pill at top */
+  body.watch-mode .user-chip{
+    position:absolute; top:2px; left:50%; transform:translateX(-50%);
+    z-index:6; background:rgba(17,17,17,.82); border:none; color:#fff;
+    padding:2px 8px; gap:5px; max-width:94vw;
+  }
+  body.watch-mode .avatar{width:14px; height:14px; font-size:8px; background:#fff; color:#111}
+  body.watch-mode .user-meta strong{font-size:10px; color:#fff; max-width:52vw}
+  body.watch-mode .user-meta span{display:none}
+  body.watch-mode #date-badge{display:none}
+
+  /* the QR itself takes all remaining space, always fully visible */
+  body.watch-mode .qr-wrap{
+    position:absolute; top:26px; bottom:22px; left:3px; right:3px;
+    padding:0; border:none; border-radius:0; background:#fff;
+    display:grid; place-items:center; min-height:0;
+  }
+  body.watch-mode .qr-wrap img,
+  body.watch-mode .qr-wrap canvas{
+    max-width:100%; max-height:100%;
+    width:auto !important; height:auto !important;
+    aspect-ratio:1/1; object-fit:contain; display:block;
+  }
+
+  /* hide foot + copy/download on watch */
+  body.watch-mode .qr-foot,
+  body.watch-mode #btn-copy-id,
+  body.watch-mode #btn-download{display:none !important}
+
+  /* logout → small pill bottom-right */
+  body.watch-mode .qr-actions{position:absolute; bottom:2px; right:3px; left:auto; z-index:6; display:block}
+  body.watch-mode .qr-actions .btn{padding:3px 10px; font-size:11px; flex:none}
+  body.watch-mode #btn-signout{background:rgba(17,17,17,.82); color:#fff; border:none}
+
+  body.watch-mode .pair-row, body.watch-mode .divider,
+  body.watch-mode .qr-actions .btn-soft, body.watch-mode .link-btn.danger{display:none !important}
+  body.watch-mode #qr-wrap:empty::before{width:100%; height:100%}
+
+  /* pairing view fits small round/square screens */
+  body.watch-mode #view-pairing .card.secondary{padding:12px; gap:8px}
+  body.watch-mode .code-big{font-size:28px; letter-spacing:.12em; padding:10px 12px; min-width:0; width:100%}
+  body.watch-mode #view-pairing .muted{font-size:11px}
   @media (orientation: landscape) and (max-height: 500px){
     body:not(.watch-mode){justify-content:flex-start; padding-top:18px}
     body:not(.watch-mode) #app{flex-direction:row; align-items:flex-start; gap:16px; max-width:720px}
