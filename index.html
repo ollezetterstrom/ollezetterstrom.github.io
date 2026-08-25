@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0a0a0a">
 <meta name="description" content="Lunchpoäng — din dagliga lunchbiljett. Logga in med Google för att visa QR-koden.">
 <title>Lunchpoäng</title>
@@ -11,6 +12,28 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* Service worker: network-first HTML so the watch always gets fresh builds.
+   Escape hatch: open /?nw=1 to unregister + clear caches. */
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  var q = new URLSearchParams(location.search);
+  if(q.has('nw')){
+    Promise.all([
+      navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.unregister(); })); }),
+      (typeof caches !== 'undefined' ? caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }) : Promise.resolve())
+    ]).catch(function(){}).then(function(){
+      q.delete('nw');
+      location.replace(location.pathname + (q.toString() ? '?' + q : '') + location.hash);
+    });
+    return;
+  }
+  if(window.__swBooted) return;
+  window.__swBooted = true;
+  navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+    .catch(function(e){ console.warn('SW failed:', e); });
+})();
+</script>
 <style>
   :root{
     --bg:#0a0a0a;
@@ -395,6 +418,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ---- config ----
+const BUILD_ID = '20260825-sw1';
 const firebaseConfig = {
   apiKey: "AIzaSyA83pUpJas-Uy7W-8Bq88RtnkhbWmW2GYo",
   authDomain: "lunchkod1239123.firebaseapp.com",
@@ -569,20 +593,39 @@ function updateHeader(user){
 }
 
 // ---- storage helpers (watch token) ----
-async function getSavedToken(){
+// Wear OS browsers can wipe localStorage; the token is therefore persisted in
+// three independent places: localStorage, a 1-year cookie, and the URL
+// fragment (#k=...) which lives in the user's bookmark and survives wipes.
+function readStoredTokenKey(){
   try{
-    const tok = localStorage.getItem('watchDeviceToken');
-    if(!tok) return null;
+    const t = localStorage.getItem('watchDeviceToken');
+    if(t) return t;
+  }catch{}
+  try{
+    const m = document.cookie.match(/(?:^|;\s*)lptok=([^;]+)/);
+    if(m) return decodeURIComponent(m[1]);
+  }catch{}
+  try{
+    const m = location.hash.match(/k=([A-Za-z0-9\-_]+)/);
+    if(m) return m[1];
+  }catch{}
+  return null;
+}
+async function lookupToken(tok){
+  try{
     const ref = doc(db, 'device_tokens', tok);
     const snap = await getDoc(ref);
     if(snap.exists()){
       const d = snap.data();
       return { token: tok, googleId: d.googleId, email: d.email, displayName: d.displayName, uid: d.userId };
-    } else {
-      localStorage.removeItem('watchDeviceToken');
     }
+    try{ if(localStorage.getItem('watchDeviceToken') === tok) localStorage.removeItem('watchDeviceToken'); }catch{}
   }catch(e){ console.warn(e); }
   return null;
+}
+async function getSavedToken(){
+  const t = readStoredTokenKey();
+  return t ? lookupToken(t) : null;
 }
 async function saveToken(userData){
   try{
@@ -595,16 +638,20 @@ async function saveToken(userData){
       createdAt: serverTimestamp(),
       deviceInfo: navigator.userAgent.slice(0,300)
     });
-    localStorage.setItem('watchDeviceToken', tok);
+    try{ localStorage.setItem('watchDeviceToken', tok); }catch{}
+    try{ document.cookie = 'lptok='+encodeURIComponent(tok)+'; max-age=31536000; path=/; Secure; SameSite=Lax'; }catch{}
+    // embed in URL so a bookmark keeps working even with zero storage
+    try{ history.replaceState(null, '', location.pathname + location.search + '#k=' + tok); }catch{}
     return tok;
   }catch(e){ console.error(e); toast('Kunde inte spara klock-token', 'error'); return null; }
 }
 async function clearToken(){
-  try{
-    const t = localStorage.getItem('watchDeviceToken');
-    if(t) await deleteDoc(doc(db, 'device_tokens', t));
-  }catch(e){ /* ignore */ }
-  localStorage.removeItem('watchDeviceToken');
+  let t = null;
+  try{ t = localStorage.getItem('watchDeviceToken'); }catch{}
+  if(t){ try{ await deleteDoc(doc(db, 'device_tokens', t)); }catch{} }
+  try{ localStorage.removeItem('watchDeviceToken'); }catch{}
+  try{ document.cookie = 'lptok=; max-age=0; path=/'; }catch{}
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch{}
 }
 
 // ---- firestore consent ----
@@ -694,6 +741,7 @@ async function startPairing(){
       // persist token for watch
       await saveToken({ googleId: d.googleId, email: d.userEmail, displayName: d.userName, uid: d.userId });
       showQR({ displayName: d.userName, email: d.userEmail, uid: d.userId }, d.googleId);
+      toast('★ Bokmärk denna sida nu! Då är du inloggad automatiskt även om klockan rensar cachen.','success', 10000);
       setTimeout(async ()=>{
         try{ await deleteDoc(ref);}catch{}
       }, 4000);
@@ -734,6 +782,7 @@ async function manualCheckPairing(){
       if(state.pairingUnsub){ state.pairingUnsub(); state.pairingUnsub=null; }
       await saveToken({ googleId:d.googleId, email:d.userEmail, displayName:d.userName, uid:d.userId });
       showQR({displayName:d.userName, email:d.userEmail, uid:d.userId}, d.googleId);
+      toast('★ Bokmärk denna sida nu — då är du alltid inloggad.','success', 10000);
       setTimeout(async()=>{ try{await deleteDoc(doc(db,'pairing_codes', state.pairingCode));}catch{} }, 3000);
     } else {
       els.pairStatus.textContent='Fortfarande väntar…';
@@ -924,6 +973,19 @@ els.btnDownload.addEventListener('click', ()=>{
 
 // ---- auth init: handle redirect first, then listen ----
 (async function initAuth(){
+  // Fastest path: token in URL fragment (#k=...) from a bookmarked page.
+  // Works even when the watch wiped localStorage — possession is enough.
+  try{
+    const m = location.hash.match(/k=([A-Za-z0-9\-_]+)/);
+    if(m){
+      const info = await lookupToken(m[1]);
+      if(info){
+        try{ localStorage.setItem('watchDeviceToken', info.token); }catch{}
+        showQR({ displayName: info.displayName, email: info.email, uid: info.uid }, info.googleId);
+        return;
+      }
+    }
+  }catch(e){ console.warn('hash token', e); }
   // quick watch token auto-login (before firebase) — gives instant QR on watch
   if(isWatchDevice()){
     const saved = await getSavedToken();
@@ -969,6 +1031,28 @@ els.btnDownload.addEventListener('click', ()=>{
 
 // expose for debugging (optional)
 window._lp = { auth, db, state, toast, showView };
+
+// ---- build freshness: GitHub Pages caches HTML 10 min and watch tabs live
+// for days — detect newer builds and reload automatically ----
+(function initBuildCheck(){
+  const fv = document.getElementById('foot-version');
+  if(fv) fv.textContent = BUILD_ID;
+  let timer = null;
+  async function check(){
+    try{
+      const res = await fetch('version.json?ts=' + Date.now(), { cache: 'no-store' });
+      if(!res.ok) return;
+      const j = await res.json();
+      if(j.build && j.build !== BUILD_ID){
+        clearInterval(timer);
+        toast('Ny version hittad — uppdaterar…', 'info', 1500);
+        setTimeout(()=> location.reload(), 900);
+      }
+    }catch{}
+  }
+  check();
+  timer = setInterval(check, 30*60*1000);
+})();
 </script>
 </body>
 </html>
