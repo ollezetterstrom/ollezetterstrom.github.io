@@ -206,7 +206,7 @@
   body.watch-mode .qr-wrap{padding:6px; border:none; background:#fff}
   body.watch-mode .qr-wrap img, body.watch-mode .qr-wrap canvas{max-width:none}
   body.watch-mode .qr-foot{justify-content:center}
-  body.watch-mode .pair-row, body.watch-mode .divider, body.watch-mode .qr-actions .btn-soft, body.watch-mode #delete-btn{display:none !important}
+  body.watch-mode .pair-row, body.watch-mode .divider, body.watch-mode .qr-actions .btn-soft, body.watch-mode .link-btn.danger{display:none !important}
   body.watch-mode .qr-actions .btn{padding:8px 10px; font-size:12px}
   @media (orientation: landscape) and (max-height: 500px){
     body:not(.watch-mode){justify-content:flex-start; padding-top:18px}
@@ -328,7 +328,7 @@
 
 </main>
 
-<p class="foot">Behöver hjälp? <a href="./admin.html">Admin</a> • Lagras i Firestore • <span id="foot-version">v3</span></p>
+<p class="foot">Behöver hjälp? <a href="./admin.html">Admin</a> • Lagras i Firestore • <span id="foot-version">v3</span> • <a href="#" id="toggle-watch" title="Tvinga klockläge för test (sparas lokalt)">Klockläge: <span id="watch-state">auto</span></a></p>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -412,14 +412,40 @@ function showView(name){
   views[name].classList.add('active');
 }
 function isWatchDevice(){
+  // manual override for testing: ?watch=1 or localStorage forceWatch=1
+  try{
+    const qs = new URLSearchParams(location.search);
+    if(qs.get('watch')==='1') return true;
+    if(localStorage.getItem('forceWatch')==='1') return true;
+  }catch{}
   const ua = navigator.userAgent.toLowerCase();
-  const watchUA = /wear os|wearos|tizen|watch|galaxy watch|apple watch|watchos|samsung.*sm-r|samsung.*watch/i.test(ua);
-  const smallSquare = window.innerWidth <= 360 && window.innerHeight <= 360 && /android/i.test(ua);
-  const tiny = window.matchMedia('(max-width: 320px) and (max-height: 320px)').matches;
-  return watchUA || smallSquare || tiny;
+  // UA hits: SM-Rxxx watches often omit "samsung" prefix, so match sm-r\d+ alone
+  if(/wear os|wearos|tizen|watch|watchos|sm-r\d+/i.test(ua)) return true;
+  if(/samsung/i.test(ua) && /watch/i.test(ua)) return true;
+  // screen heuristics: watches are 200-520px and roughly square (ratio <1.45)
+  // original 450px threshold missed 480x480 Galaxy Watch → bump to 520
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const sw = window.screen ? Math.min(window.screen.width||vw, window.screen.width||vw) : vw;
+  const sh = window.screen ? Math.max(window.screen.height||vh, window.screen.height||vh) : vh;
+  const min = Math.min(vw, vh, sw);
+  const max = Math.max(vw, vh);
+  const ratio = max / (min || 1);
+  if(min <= 520 && ratio < 1.45 && /android/i.test(ua)) return true;
+  // very tiny display alone (regardless of UA) is watch-like — covers 340x340 etc.
+  if(min <= 380 && ratio < 1.6) return true;
+  // media-query fallback (covers CSS-pixel watches)
+  if(window.matchMedia('(max-width: 520px) and (max-height: 520px)').matches && min <= 520 && ratio < 1.6) {
+    // if UA is empty or android, treat as watch to avoid false-positive on small phones
+    // but still require small + square
+    if(/android/i.test(ua) || min <= 340) return true;
+  }
+  return false;
 }
 function applyWatchClass(){
-  document.body.classList.toggle('watch-mode', isWatchDevice());
+  const isWatch = isWatchDevice();
+  document.body.classList.toggle('watch-mode', isWatch);
+  // debug hint in console for troubleshooting
+  if(window._lp) console.log('[watch] isWatch=', isWatch, 'ua=', navigator.userAgent.slice(0,120), 'size=', window.innerWidth+'x'+window.innerHeight, 'screen=', (window.screen?window.screen.width+'x'+window.screen.height:'?'));
 }
 function initials(name, email){
   if(name) return name.trim().split(/\s+/).slice(0,2).map(s=>s[0].toUpperCase()).join('');
@@ -766,8 +792,35 @@ async function doDeleteData(){
 }
 
 // ---- boot ----
+function updateWatchToggleLabel(){
+  const lab = document.getElementById('watch-state');
+  if(!lab) return;
+  try{
+    if(localStorage.getItem('forceWatch')==='1') lab.textContent='på';
+    else if(new URLSearchParams(location.search).get('watch')==='1') lab.textContent='på (URL)';
+    else lab.textContent = isWatchDevice() ? 'auto: klocka' : 'auto: telefon';
+  }catch{ lab.textContent='auto';}
+}
 applyWatchClass();
-window.addEventListener('resize', applyWatchClass);
+updateWatchToggleLabel();
+window.addEventListener('resize', ()=>{ applyWatchClass(); updateWatchToggleLabel(); });
+const toggleWatch = document.getElementById('toggle-watch');
+if(toggleWatch){
+  toggleWatch.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const cur = localStorage.getItem('forceWatch');
+    if(cur==='1'){ localStorage.removeItem('forceWatch'); toast('Klockläge: auto', 'info'); }
+    else { localStorage.setItem('forceWatch','1'); toast('Klockläge tvingat — ladda om för full klock-UI','success', 4000); }
+    applyWatchClass();
+    updateWatchToggleLabel();
+  });
+}
+// also allow ?watch=0 to clear
+try{
+  if(new URLSearchParams(location.search).get('watch')==='0'){
+    localStorage.removeItem('forceWatch');
+  }
+}catch{}
 
 // button wiring
 els.btnSignin.addEventListener('click', doSignIn);
