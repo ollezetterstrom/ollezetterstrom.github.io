@@ -1,14 +1,17 @@
 /* Lunchpoäng freshness worker.
-   Strategy: network-first for navigations (HTML) with 3s timeout,
-   cached shell as offline fallback. Everything else passes through. */
-const VERSION = 'v1';
+   Strategy: network-first for navigations (HTML) with short timeout,
+   cached shell as fallback + background revalidation so a slow network
+   can never pin an old build. Everything else passes through. */
+const VERSION = 'v2';
 const CACHE = 'shell-' + VERSION;
 const SHELL = '/';
-const TIMEOUT_MS = 3000;
+const TIMEOUT_MS = 2500;
+const BG_TIMEOUT_MS = 15000;
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
+    // cache:'reload' bypasses BOTH browser HTTP cache and any stale edge copy
     await cache.add(new Request(SHELL, { cache: 'reload' }));
     await self.skipWaiting();
   })());
@@ -27,29 +30,42 @@ function failAfter(ms) {
   return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
 }
 
-async function navigate(request) {
+async function navigate(request, event) {
   const cache = await caches.open(CACHE);
+
+  let fresh = null;
   try {
-    const fresh = await Promise.race([fetch(request), failAfter(TIMEOUT_MS)]);
-    if (fresh.ok) {
-      // one canonical entry so ?v= variants share it
-      await cache.put(SHELL, fresh.clone());
-      return fresh;
-    }
-    throw new Error('HTTP ' + fresh.status);
-  } catch (err) {
-    const cached = (await cache.match(SHELL)) ||
-                   (await caches.match(request, { ignoreSearch: true }));
-    if (cached) return cached;
-    throw err;
+    fresh = await Promise.race([fetch(request), failAfter(TIMEOUT_MS)]);
+  } catch { /* timeout or network error -> fallback below */ }
+
+  if (fresh && fresh.ok) {
+    const put = cache.put(SHELL, fresh.clone());
+    if (event && event.waitUntil) event.waitUntil(put);
+    return fresh;
   }
+
+  // Fallback: serve cached shell NOW, but keep downloading the fresh one
+  // in the background so the very next visit is up to date.
+  if (event && event.waitUntil) {
+    event.waitUntil((async () => {
+      try {
+        const r = await Promise.race([fetch(request), failAfter(BG_TIMEOUT_MS)]);
+        if (r && r.ok) await cache.put(SHELL, r.clone());
+      } catch {}
+    })());
+  }
+
+  const cached = (await cache.match(SHELL)) ||
+                 (await caches.match(request, { ignoreSearch: true }));
+  if (cached) return cached;
+  throw (fresh ? new Error('HTTP ' + fresh.status) : new Error('offline'));
 }
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || req.mode !== 'navigate') return;
   if (new URL(req.url).origin !== self.location.origin) return;
-  event.respondWith(navigate(req));
+  event.respondWith(navigate(req, event));
 });
 
 /* Escape hatches: page posts {type:'UNREGISTER'}, or user opens /?nw=1 */
