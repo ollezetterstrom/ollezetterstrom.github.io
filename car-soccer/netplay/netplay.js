@@ -288,6 +288,14 @@ function buildLobby() {
         <button id="np-leave" type="button" disabled>Leave</button>
       </div>
       <div class="np-row np-status" id="np-status">Solo bot mode.</div>
+      <div class="np-row np-title">Graphics (reloads page)</div>
+      <div class="np-row">
+        <select id="np-perf">
+          <option value="auto">Auto (fast on Mac)</option>
+          <option value="fast">Fast (Mac)</option>
+          <option value="full">Full quality</option>
+        </select>
+      </div>
     </div>`;
   document.body.appendChild(panel);
 
@@ -305,6 +313,19 @@ function buildLobby() {
   joinBtn.addEventListener("click", onJoin);
   goBtn.addEventListener("click", onGo);
   leaveBtn.addEventListener("click", onLeave);
+
+  const perfSel = panel.querySelector("#np-perf");
+  if (perfSel && window.__csPerf) {
+    perfSel.value = window.__csPerf.mode;
+    const hint = document.createElement("div");
+    hint.className = "np-row np-hint";
+    hint.textContent = `Active now: ${window.__csPerf.effective}. Fast = no MSAA, 1x scale, no shadows.`;
+    perfSel.closest(".np-row").after(hint);
+    perfSel.addEventListener("change", () => {
+      window.__csPerf.setMode(perfSel.value);
+      location.reload();
+    });
+  }
 
   const m = location.hash.match(/room=([A-Za-z0-9]{4,8})/);
   if (m) codeEl.value = m[1].toUpperCase();
