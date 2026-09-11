@@ -14,3 +14,6 @@ Netplay changes in this fork (MIT, yours to keep):
 - Subfolder-relative asset paths (`./assets/...`) so the game runs from `/car-soccer/`.
 - P2P multiplayer overlay (see `netplay/`): host-authoritative state sync over
   WebRTC DataChannel. Solo vs-bot mode untouched.
+- `netplay/vendor/trystero.bundle.mjs`: Trystero (MIT, Dan Motzenbecker,
+  https://github.com/dmotz/trystero), bundled from npm (`trystero@0.25.4` +
+  `@trystero-p2p/nostr`). License: `netplay/vendor/TRYSTERO-LICENSE`.
