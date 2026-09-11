@@ -51,8 +51,7 @@
 }
 #np-code {
   width: 100%;
-  box-sizing: border-box;
-  text-transform: uppercase;
+  box-sizing: border-box;  text-transform: uppercase;
   letter-spacing: 2px;
   text-align: center;
   background: #0a0f16;
@@ -77,4 +76,14 @@
   font-size: 12px;
   opacity: 0.9;
   overflow-wrap: anywhere;
+}
+#np-perf {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0a0f16;
+  color: #dfe7f2;
+  border: 1px solid #3a4a63;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
 }
