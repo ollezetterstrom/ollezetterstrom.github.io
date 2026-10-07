@@ -66,9 +66,10 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET' || req.mode !== 'navigate') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  // Car Soccer netplay app manages its own loading; never let the
-  // Lunchpoäng shell cache serve (or be poisoned by) its pages.
-  if (url.pathname === '/car-soccer' || url.pathname.startsWith('/car-soccer/')) return;
+  // Standalone game apps manage their own loading; never let the
+  // Lunchpoäng shell cache serve (or be poisoned by) their pages.
+  if (url.pathname === '/car-soccer' || url.pathname.startsWith('/car-soccer/') ||
+      url.pathname === '/pegglenights' || url.pathname.startsWith('/pegglenights/')) return;
   event.respondWith(navigate(req, event));
 });
 
